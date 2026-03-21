@@ -2,8 +2,13 @@ import { type NextRequest, NextResponse } from "next/server";
 import { eq, and, asc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { thread, message, threadShare } from "@/lib/db/schema";
-import { requireAuth, getOptionalSession } from "@/lib/auth-helpers";
-import { updateThreadSchema } from "@/lib/validations";
+import { requireAuth, getOptionalSession, isCliRequest } from "@/lib/auth-helpers";
+import {
+  updateThreadSchema,
+  uploadThreadSchema,
+  extractTextFromBlocks,
+  type ContentBlock,
+} from "@/lib/validations";
 
 async function findThread(slug: string) {
   const rows = await db
@@ -152,6 +157,119 @@ export async function PATCH(
   }
 
   return NextResponse.json({ updated: true });
+}
+
+/**
+ * PUT /api/threads/[slug] — Re-upload a session from the CLI (owner only)
+ *
+ * Accepts the same payload as POST /api/threads. Replaces all messages
+ * and updates metadata. Bumps updatedAt. Preserves slug, visibility, tags,
+ * and shares.
+ */
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ slug: string }> }
+) {
+  if (!isCliRequest(request)) {
+    return NextResponse.json(
+      { error: "Re-upload is only available via the Replay CLI" },
+      { status: 403 }
+    );
+  }
+
+  const { slug } = await params;
+  const [session, authError] = await requireAuth(request);
+  if (authError) return authError;
+
+  const threadRow = await findThread(slug);
+
+  if (!threadRow || threadRow.ownerId !== session.user.id) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const body: unknown = await request.json();
+  const parsed = uploadThreadSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid request body", details: parsed.error.issues },
+      { status: 400 }
+    );
+  }
+
+  const { session: sessionData, messages: msgs } = parsed.data;
+
+  // Derive title
+  let title = sessionData.title ?? null;
+  if (!title) {
+    const firstUserMsg = msgs.find((m) => m.role === "user");
+    if (firstUserMsg) {
+      if ("content" in firstUserMsg && firstUserMsg.content) {
+        title = extractTextFromBlocks(
+          firstUserMsg.content as ContentBlock[]
+        ).slice(0, 200);
+      } else if ("text" in firstUserMsg && firstUserMsg.text) {
+        title = firstUserMsg.text.slice(0, 200);
+      }
+    }
+  }
+
+  // Update thread metadata (preserve visibility, tags, shares)
+  await db
+    .update(thread)
+    .set({
+      title: title || null,
+      agent: sessionData.agent,
+      model: sessionData.model ?? null,
+      projectPath: sessionData.project_path ?? null,
+      gitBranch: sessionData.git_branch ?? null,
+      cliVersion: sessionData.cli_version ?? null,
+      sessionTs: new Date(sessionData.timestamp),
+      messageCount: msgs.length,
+      updatedAt: new Date(),
+    })
+    .where(eq(thread.id, threadRow.id));
+
+  // Replace messages: delete old, insert new
+  await db.delete(message).where(eq(message.threadId, threadRow.id));
+
+  if (msgs.length > 0) {
+    await db.insert(message).values(
+      msgs.map((m, i) => {
+        let contentText: string;
+        let contentBlocks: ContentBlock[] | null = null;
+
+        if ("content" in m && m.content && Array.isArray(m.content)) {
+          contentBlocks = m.content as ContentBlock[];
+          contentText = extractTextFromBlocks(contentBlocks);
+        } else if ("text" in m && m.text) {
+          contentText = m.text;
+        } else {
+          contentText = "";
+        }
+
+        return {
+          threadId: threadRow.id,
+          ordinal: i,
+          role: m.role,
+          content: contentText,
+          contentBlocks: contentBlocks ? JSON.stringify(contentBlocks) : null,
+          messageModel: "model" in m ? (m.model ?? null) : null,
+          stopReason: "stop_reason" in m ? (m.stop_reason ?? null) : null,
+          usage: "usage" in m && m.usage ? JSON.stringify(m.usage) : null,
+          timestamp: new Date(m.timestamp),
+        };
+      })
+    );
+  }
+
+  return NextResponse.json({
+    id: threadRow.id,
+    slug: threadRow.slug,
+    url: `${process.env.NEXT_PUBLIC_APP_URL}/t/${threadRow.slug}`,
+    message_count: msgs.length,
+    updated: true,
+  });
 }
 
 /**
