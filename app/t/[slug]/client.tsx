@@ -93,19 +93,9 @@ function SidebarItem({
 }
 
 /**
- * Check if a message has visible content worth rendering.
+ * Check if a message has any renderable content.
  */
 function hasVisibleContent(msg: MessageData): boolean {
-  if (msg.role === "user") {
-    if (msg.contentBlocks) {
-      const hasText = msg.contentBlocks.some(
-        (b) => b.type === "text" && (b as { text: string }).text.trim()
-      );
-      return hasText;
-    }
-    return msg.content.trim().length > 0;
-  }
-  // Assistant messages: always render (they have tool_use, text, thinking, etc.)
   if (msg.contentBlocks && msg.contentBlocks.length > 0) return true;
   return msg.content.trim().length > 0;
 }
@@ -116,16 +106,34 @@ function renderMessage(msg: MessageData, isOwner: boolean) {
   }
 
   if (msg.role === "user") {
-    // User messages: extract text, skip if empty (tool-result-only messages)
-    let text = msg.content;
     if (msg.contentBlocks) {
       const textBlocks = msg.contentBlocks.filter((b) => b.type === "text");
-      text = textBlocks
+      const toolResultBlocks = msg.contentBlocks.filter(
+        (b) => b.type === "tool_result"
+      );
+      const text = textBlocks
         .map((b) => (b as { type: "text"; text: string }).text)
         .join("\n");
+
+      // Has human text — render as user message
+      if (text.trim()) {
+        return <UserMessage key={msg.id} text={text} />;
+      }
+
+      // Tool-result-only — render the results without the > prompt
+      if (toolResultBlocks.length > 0) {
+        return (
+          <div key={msg.id} className="py-2">
+            <ContentBlockRenderer blocks={toolResultBlocks as never[]} />
+          </div>
+        );
+      }
+
+      return null;
     }
-    if (!text.trim()) return null;
-    return <UserMessage key={msg.id} text={text} />;
+
+    if (!msg.content.trim()) return null;
+    return <UserMessage key={msg.id} text={msg.content} />;
   }
 
   // Assistant messages: render structured blocks or fall back to text
