@@ -1,26 +1,107 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Background — warm dark, stone-tinted */
+  --bg: #0c0a09;
+  --surface: #1c1917;
+  --surface-raised: #231f1d;
+
+  /* Foreground — warm neutrals */
+  --fg: #f5f5f4;
+  --fg-muted: #a8a29e;
+  --fg-subtle: #78716c;
+  --fg-ghost: #57534e;
+  --fg-faint: #44403c;
+
+  /* Borders — warm */
+  --border: #292524;
+  --border-hover: #44403c;
+
+  /* Accent — orange */
+  --accent: #f97316;
+  --accent-hover: #fb923c;
+  --accent-dim: #9a3412;
+
+  /* Diff */
+  --diff-add: #4ade80;
+  --diff-add-bg: #052e16;
+  --diff-remove: #f87171;
+  --diff-remove-bg: #450a0a;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-fg-ghost: var(--fg-ghost);
+  --color-fg-faint: var(--fg-faint);
+  --color-border: var(--border);
+  --color-border-hover: var(--border-hover);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-dim: var(--accent-dim);
+  --color-diff-add: var(--diff-add);
+  --color-diff-add-bg: var(--diff-add-bg);
+  --color-diff-remove: var(--diff-remove);
+  --color-diff-remove-bg: var(--diff-remove-bg);
+  --font-sans: var(--font-helvetica);
+  --font-mono: var(--font-jetbrains-mono);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans), "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.6;
 }
+
+/* Typography scale — golden ratio (1.618) from 13px base */
+/* step -1: 8px | step 0: 13px | step 1: 21px | step 2: 34px | step 3: 55px */
+
+/* Scroll reveal animation */
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Terminal cursor blink */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Border pulse — single shot */
+@keyframes border-pulse {
+  0% { border-color: var(--border); }
+  50% { border-color: var(--fg-subtle); }
+  100% { border-color: var(--border); }
+}
+
+.animate-reveal {
+  animation: reveal 400ms ease-out both;
+}
+
+.animate-blink {
+  animation: blink 1s step-end infinite;
+}
+
+.animate-border-pulse {
+  animation: border-pulse 600ms ease-out 500ms both;
+}
+
+/* Stagger delays for children */
+.stagger-1 { animation-delay: 0ms; }
+.stagger-2 { animation-delay: 80ms; }
+.stagger-3 { animation-delay: 160ms; }
+.stagger-4 { animation-delay: 240ms; }
+.stagger-5 { animation-delay: 320ms; }
