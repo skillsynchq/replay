@@ -137,15 +137,56 @@ function cleanText(text: string): string {
     .split("\n")
     .filter((line) => {
       const trimmed = line.trim();
-      // Strip agentId lines
       if (trimmed.startsWith("agentId:")) return false;
-      // Strip <usage> blocks
       if (trimmed.startsWith("<usage>") || trimmed.startsWith("</usage>")) return false;
       if (/^(total_tokens|tool_uses|duration_ms):/.test(trimmed)) return false;
       return true;
     })
     .join("\n")
     .trim();
+}
+
+/**
+ * Parse tool result content. It can be:
+ * - Plain text
+ * - A JSON array of content blocks: [{"text":"...","type":"text"}, ...]
+ * - A JSON string
+ * Returns cleaned plain text.
+ */
+function parseResultContent(raw: string): string {
+  const trimmed = raw.trim();
+
+  // Try to parse as JSON array of content blocks
+  if (trimmed.startsWith("[")) {
+    try {
+      const parsed: unknown[] = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        const texts = parsed
+          .filter(
+            (b): b is { type: string; text: string } =>
+              typeof b === "object" &&
+              b !== null &&
+              "type" in b &&
+              "text" in b &&
+              typeof (b as Record<string, unknown>).text === "string"
+          )
+          .map((b) => b.text)
+          .filter((t) => {
+            // Filter out agent metadata embedded in text
+            if (t.startsWith("agentId:")) return false;
+            if (t.includes("<usage>")) return false;
+            return true;
+          });
+        if (texts.length > 0) {
+          return cleanText(texts.join("\n\n"));
+        }
+      }
+    } catch {
+      // Not valid JSON, treat as plain text
+    }
+  }
+
+  return cleanText(trimmed);
 }
 
 function TextBlockView({ block }: { block: TextBlock }) {
@@ -221,11 +262,12 @@ function ToolPill({
       );
     }
     if (result && open) {
-      const cleaned = cleanText(result);
+      const parsed = parseResultContent(result);
+      if (!parsed) return null;
       return (
-        <pre className="overflow-x-auto font-mono text-[11px] leading-relaxed text-fg-ghost whitespace-pre-wrap max-h-[300px] overflow-y-auto">
-          {cleaned}
-        </pre>
+        <div className="max-h-[300px] overflow-y-auto text-[12px]">
+          <Markdown content={parsed} />
+        </div>
       );
     }
     return null;
