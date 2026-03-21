@@ -211,8 +211,8 @@ export function ThreadViewerClient({
 
               {thread.projectPath && (
                 <SidebarItem label="Project">
-                  <span className="font-mono text-[11px] break-all">
-                    {thread.projectPath}
+                  <span className="font-mono text-[11px]">
+                    {thread.projectPath.split("/").pop() ?? thread.projectPath}
                   </span>
                 </SidebarItem>
               )}
