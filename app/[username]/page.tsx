@@ -1,10 +1,13 @@
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { thread } from "@/lib/db/schema";
+import { auth } from "@/lib/auth";
 import { Nav } from "@/app/components/nav";
-import { ThreadCard } from "@/app/components/thread-card";
+import { Assistant } from "@/app/components/assistant";
 import { PageReveal } from "@/app/components/page-reveal";
+import { ProfileThreads } from "./client";
 
 export default async function ProfilePage({
   params,
@@ -43,6 +46,14 @@ export default async function ProfilePage({
     .orderBy(desc(thread.createdAt))
     .limit(50);
 
+  // Check if visitor is authenticated (for AI button)
+  let isAuthenticated = false;
+  try {
+    const headersList = await headers();
+    const session = await auth.api.getSession({ headers: headersList });
+    isAuthenticated = !!session;
+  } catch {}
+
   return (
     <div className="flex min-h-dvh flex-col">
       <Nav />
@@ -74,29 +85,19 @@ export default async function ProfilePage({
                 Public threads
               </p>
 
-              {threads.length === 0 ? (
-                <p className="mt-6 text-[13px] text-fg-ghost">
-                  No public threads yet.
-                </p>
-              ) : (
-                <div className="mt-4 space-y-3">
-                  {threads.map((t) => (
-                    <ThreadCard
-                      key={t.id}
-                      slug={t.slug}
-                      title={t.title}
-                      agent={t.agent}
-                      model={t.model}
-                      messageCount={t.messageCount}
-                      sessionTs={t.sessionTs.toISOString()}
-                    />
-                  ))}
-                </div>
-              )}
+              <ProfileThreads
+                threads={threads.map((t) => ({
+                  ...t,
+                  sessionTs: t.sessionTs.toISOString(),
+                }))}
+                profileName={user.name}
+                isAuthenticated={isAuthenticated}
+              />
             </div>
           </PageReveal>
         </div>
       </main>
+      {isAuthenticated && <Assistant />}
     </div>
   );
 }

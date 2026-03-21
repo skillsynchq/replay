@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { NavClient } from "./nav-client";
 
 export async function Nav() {
-  let user: { name: string; image: string | null } | null = null;
+  let user: { name: string; image: string | null; username: string | null } | null = null;
 
   try {
     const headersList = await headers();
@@ -12,6 +12,7 @@ export async function Nav() {
       user = {
         name: session.user.name,
         image: session.user.image ?? null,
+        username: (session.user as Record<string, unknown>).username as string | null ?? null,
       };
     }
   } catch {
