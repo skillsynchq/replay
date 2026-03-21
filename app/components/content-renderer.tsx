@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { FileMark } from "./icons";
+import { Markdown } from "./markdown";
 
 // --- Types ---
 
@@ -61,11 +62,7 @@ export function ContentBlockRenderer({
 
 function TextBlockView({ block }: { block: TextBlock }) {
   if (!block.text.trim()) return null;
-  return (
-    <p className="text-[13px] leading-relaxed text-fg whitespace-pre-wrap">
-      {block.text}
-    </p>
-  );
+  return <Markdown content={block.text} />;
 }
 
 // --- Thinking ---

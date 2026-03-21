@@ -5,6 +5,7 @@ import { ClaudeMark } from "@/app/components/icons";
 import { VisibilityBadge } from "@/app/components/visibility-badge";
 import { PageReveal } from "@/app/components/page-reveal";
 import { ContentBlockRenderer } from "@/app/components/content-renderer";
+import { Markdown } from "@/app/components/markdown";
 import {
   UserMessage,
   AssistantMessage,
@@ -135,9 +136,7 @@ function renderMessage(msg: MessageData, isOwner: boolean) {
           blocks={msg.contentBlocks as never[]}
         />
       ) : (
-        <p className="text-[13px] leading-relaxed text-fg whitespace-pre-wrap">
-          {msg.content}
-        </p>
+        <Markdown content={msg.content} />
       )}
     </AssistantMessage>
   );
