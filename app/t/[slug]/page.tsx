@@ -1,0 +1,104 @@
+import { notFound } from "next/navigation";
+import { eq, asc, and, sql } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { thread, message, threadShare } from "@/lib/db/schema";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { Nav } from "@/app/components/nav";
+import { ThreadViewerClient } from "./client";
+
+export default async function ThreadPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+
+  const threads = await db
+    .select()
+    .from(thread)
+    .where(eq(thread.slug, slug))
+    .limit(1);
+
+  const threadRow = threads[0];
+  if (!threadRow) notFound();
+
+  // Check access
+  const headersList = await headers();
+  const session = await auth.api.getSession({ headers: headersList });
+  const userId = session?.user.id ?? null;
+  const isOwner = userId === threadRow.ownerId;
+
+  if (threadRow.visibility === "private" && !isOwner) notFound();
+  if (threadRow.visibility === "shared" && !isOwner) {
+    if (!userId) notFound();
+    const shares = await db
+      .select({ id: threadShare.id })
+      .from(threadShare)
+      .where(
+        and(
+          eq(threadShare.threadId, threadRow.id),
+          eq(threadShare.userId, userId)
+        )
+      )
+      .limit(1);
+    if (shares.length === 0) notFound();
+  }
+
+  // Fetch messages
+  const messages = await db
+    .select()
+    .from(message)
+    .where(eq(message.threadId, threadRow.id))
+    .orderBy(asc(message.ordinal));
+
+  // Fetch owner info
+  const ownerRows = await db.execute<{
+    name: string;
+    username: string | null;
+    image: string | null;
+  }>(
+    sql`SELECT name, username, image FROM "user" WHERE id = ${threadRow.ownerId} LIMIT 1`
+  );
+  const owner = ownerRows.rows?.[0] ?? {
+    name: "Unknown",
+    username: null,
+    image: null,
+  };
+
+  const promptCount = messages.filter((m) => m.role === "user").length;
+
+  return (
+    <div className="flex min-h-dvh flex-col">
+      <Nav />
+      <main className="flex-1 px-6 pt-24 pb-20">
+        <ThreadViewerClient
+          thread={{
+            id: threadRow.id,
+            slug: threadRow.slug,
+            title: threadRow.title,
+            agent: threadRow.agent,
+            model: threadRow.model,
+            visibility: threadRow.visibility,
+            projectPath: threadRow.projectPath,
+            gitBranch: threadRow.gitBranch,
+            messageCount: threadRow.messageCount,
+            sessionTs: threadRow.sessionTs.toISOString(),
+            createdAt: threadRow.createdAt.toISOString(),
+          }}
+          messages={messages.map((m) => ({
+            id: m.id,
+            ordinal: m.ordinal,
+            role: m.role,
+            content: m.redacted && !isOwner ? "" : m.content,
+            redacted: m.redacted,
+            timestamp: m.timestamp.toISOString(),
+          }))}
+          owner={owner}
+          promptCount={promptCount}
+          isOwner={isOwner}
+        />
+      </main>
+    </div>
+  );
+}
