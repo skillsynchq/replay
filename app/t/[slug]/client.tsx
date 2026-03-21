@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { ClaudeMark } from "@/app/components/icons";
 import { VisibilitySelector } from "@/app/components/visibility-selector";
@@ -9,6 +9,7 @@ import { TagEditor } from "@/app/components/tag-editor";
 import { PageReveal } from "@/app/components/page-reveal";
 import { ContentBlockRenderer } from "@/app/components/content-renderer";
 import { Markdown } from "@/app/components/markdown";
+import { AssistantTrigger } from "@/app/components/assistant";
 import {
   UserMessage,
   AssistantMessage,
@@ -208,6 +209,38 @@ export function ThreadViewerClient({
     { input: 0, output: 0 }
   );
 
+  // Build context string for the AI assistant
+  const assistantThreadContext = useMemo(() => {
+    const parts: string[] = [
+      `The user is currently viewing this conversation:`,
+      `Title: "${thread.title || "Untitled"}"`,
+      `Agent: ${agentLabel(thread.agent)}`,
+      thread.model ? `Model: ${thread.model}` : "",
+      `Messages: ${thread.messageCount} (${promptCount} prompts)`,
+      thread.projectPath ? `Project: ${thread.projectPath}` : "",
+      thread.gitBranch ? `Branch: ${thread.gitBranch}` : "",
+      thread.tags.length > 0 ? `Tags: ${thread.tags.join(", ")}` : "",
+      `Date: ${new Date(thread.sessionTs).toLocaleDateString()}`,
+      "",
+      "Conversation content:",
+    ].filter(Boolean);
+
+    // Include message content (truncate to keep context reasonable)
+    let charBudget = 12000;
+    for (const msg of messages) {
+      if (charBudget <= 0) {
+        parts.push("... (remaining messages truncated)");
+        break;
+      }
+      const role = msg.role === "user" ? "User" : "Assistant";
+      const text = msg.content.slice(0, Math.min(msg.content.length, charBudget));
+      parts.push(`[${role}]: ${text}`);
+      charBudget -= text.length;
+    }
+
+    return parts.join("\n");
+  }, [thread, messages, promptCount]);
+
   return (
     <div className="mx-auto max-w-6xl">
       {/* Title + Author — centered */}
@@ -254,12 +287,15 @@ export function ThreadViewerClient({
         {/* Sidebar — right column */}
         <PageReveal delay={160} className="hidden w-48 shrink-0 lg:block">
           <div className="sticky top-24 space-y-3">
-            <div>
+            <div className="flex items-start justify-between">
               <VisibilitySelector
                 visibility={thread.visibility}
                 slug={thread.slug}
                 isOwner={isOwner}
               />
+              {isOwner && (
+                <AssistantTrigger threadContext={assistantThreadContext} />
+              )}
             </div>
 
             <div className="space-y-3 border-t border-border pt-3">
@@ -331,6 +367,7 @@ export function ThreadViewerClient({
                 />
               </div>
             )}
+
           </div>
         </PageReveal>
       </div>

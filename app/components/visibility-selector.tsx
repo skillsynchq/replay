@@ -47,7 +47,7 @@ export function VisibilitySelector({
     <div>
       <button
         onClick={() => setExpanded(!expanded)}
-        className="inline-flex items-center gap-1 cursor-pointer"
+        className="inline-flex items-center gap-1.5 cursor-pointer"
       >
         <VisibilityBadge visibility={localVisibility} />
         {expanded ? (
@@ -58,26 +58,24 @@ export function VisibilitySelector({
       </button>
 
       {expanded && (
-        <div className="mt-1.5 border border-border rounded-[4px] overflow-hidden bg-surface">
+        <div className="mt-2 border border-border rounded-[4px] overflow-hidden">
           {options.map((opt) => (
             <button
               key={opt.value}
               onClick={() => select(opt.value)}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors duration-150 hover:bg-surface-raised"
+              className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-left transition-colors duration-150 hover:bg-surface-raised ${
+                localVisibility === opt.value ? "bg-surface" : ""
+              }`}
             >
               <span
-                className={`size-2 shrink-0 rounded-full border ${
+                className={`size-1.5 shrink-0 rounded-full ${
                   localVisibility === opt.value
-                    ? "border-accent bg-accent"
-                    : "border-fg-faint"
+                    ? "bg-accent"
+                    : "bg-fg-faint"
                 }`}
               />
-              <div>
-                <span className="text-[11px] text-fg-muted">{opt.label}</span>
-                <span className="ml-1.5 text-[10px] text-fg-ghost">
-                  {opt.desc}
-                </span>
-              </div>
+              <span className="text-[11px] text-fg-muted">{opt.label}</span>
+              <span className="text-[10px] text-fg-ghost">{opt.desc}</span>
             </button>
           ))}
         </div>

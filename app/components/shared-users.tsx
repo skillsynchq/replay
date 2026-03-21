@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { XIcon } from "@/app/components/icons";
 import { getShares, shareThread, unshareThread } from "@/lib/thread-mutations";
 
@@ -18,7 +18,10 @@ export function SharedUsers({ slug }: SharedUsersProps) {
   const [shares, setShares] = useState<Share[]>([]);
   const [loading, setLoading] = useState(true);
   const [inputValue, setInputValue] = useState("");
+  const [inputFocused, setInputFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     getShares(slug).then((result) => {
@@ -35,8 +38,9 @@ export function SharedUsers({ slug }: SharedUsersProps) {
 
   async function addUser() {
     const username = inputValue.trim();
-    if (!username) return;
+    if (!username || adding) return;
 
+    setAdding(true);
     const result = await shareThread(slug, username);
     if (result.ok) {
       setShares((prev) => [
@@ -49,13 +53,13 @@ export function SharedUsers({ slug }: SharedUsersProps) {
       ]);
       setInputValue("");
       setError(null);
-      // Refetch to get the real user_id
       getShares(slug).then((r) => {
         if (r.ok) setShares(r.data.shares);
       });
     } else {
       setError(result.error);
     }
+    setAdding(false);
   }
 
   async function removeUser(userId: string) {
@@ -66,52 +70,68 @@ export function SharedUsers({ slug }: SharedUsersProps) {
   }
 
   return (
-    <div className="mt-2">
-      <span className="text-[10px] uppercase tracking-wider text-fg-ghost">
-        Shared with
-      </span>
-
-      {loading ? (
-        <p className="mt-1 text-[10px] text-fg-faint">Loading...</p>
-      ) : (
-        <div className="mt-1 space-y-0.5">
-          {shares.length === 0 && (
-            <p className="text-[10px] text-fg-faint">No one yet</p>
-          )}
-          {shares.map((s) => (
-            <div
-              key={s.user_id || s.username}
-              className="flex items-center justify-between py-0.5"
-            >
-              <span className="font-mono text-[11px] text-fg-muted">
-                @{s.username}
-              </span>
-              <button
-                onClick={() => removeUser(s.user_id)}
-                className="text-fg-ghost transition-colors duration-150 hover:text-fg-muted"
-              >
-                <XIcon className="size-2.5" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="mt-1.5">
-        <input
-          type="text"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") addUser();
-          }}
-          placeholder="username"
-          className="w-full bg-transparent border border-border rounded-[4px] px-2 py-1 font-mono text-[11px] text-fg placeholder:text-fg-faint outline-none focus:border-border-hover transition-colors duration-150"
-        />
-        {error && (
-          <p className="mt-1 text-[10px] text-accent">{error}</p>
+    <div className="mt-3">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] uppercase tracking-wider text-fg-ghost">
+          Shared with
+        </span>
+        {shares.length > 0 && (
+          <span className="font-mono text-[10px] text-fg-faint">
+            {shares.length}
+          </span>
         )}
       </div>
+
+      {loading ? (
+        <div className="mt-2 h-3 w-16 bg-surface-raised rounded-[2px] animate-pulse" />
+      ) : (
+        <>
+          {shares.length > 0 && (
+            <div className="mt-1.5 space-y-px">
+              {shares.map((s) => (
+                <div
+                  key={s.user_id || s.username}
+                  className="group flex items-center justify-between rounded-[2px] py-1 -mx-1 px-1 transition-colors duration-150 hover:bg-surface"
+                >
+                  <span className="font-mono text-[11px] text-fg-muted truncate">
+                    @{s.username}
+                  </span>
+                  <button
+                    onClick={() => removeUser(s.user_id)}
+                    className="text-fg-ghost opacity-0 group-hover:opacity-100 transition-opacity duration-150 hover:text-fg-muted"
+                  >
+                    <XIcon className="size-2.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-1.5 relative">
+            <span className="pointer-events-none absolute left-1.5 top-1/2 -translate-y-1/2 font-mono text-[10px] text-fg-faint">
+              @
+            </span>
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onFocus={() => setInputFocused(true)}
+              onBlur={() => setInputFocused(false)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") addUser();
+              }}
+              placeholder={shares.length === 0 ? "add username" : "add another"}
+              disabled={adding}
+              className="w-full bg-transparent border-b border-border pl-5 pr-1 py-1 font-mono text-[11px] text-fg placeholder:text-fg-faint outline-none focus:border-fg-faint transition-colors duration-150 disabled:opacity-50"
+            />
+          </div>
+
+          {error && (
+            <p className="mt-1 text-[10px] text-diff-remove">{error}</p>
+          )}
+        </>
+      )}
     </div>
   );
 }

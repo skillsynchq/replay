@@ -134,65 +134,82 @@ export default function SettingsPage() {
             <p className="font-mono text-[11px] uppercase tracking-widest text-accent">
               Username
             </p>
-            <p className="mt-2 text-[13px] text-fg-muted">
-              Claim your profile URL at{" "}
-              <span className="font-mono text-fg-subtle">
-                replay.md/{username || "you"}
-              </span>
-            </p>
 
-            <div className="mt-4 flex items-center gap-3">
-              <div className="relative flex-1">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[13px] text-fg-ghost">
-                  @
-                </span>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => {
-                    setUsername(e.target.value);
-                    setAvailable(null);
-                    setSaved(false);
-                    setError(null);
-                  }}
-                  placeholder="username"
-                  className="w-full border border-border bg-surface px-3 py-2 pl-8 font-mono text-[13px] text-fg placeholder:text-fg-faint focus:border-border-hover focus:outline-none rounded-[4px]"
-                />
-                {/* Availability indicator */}
-                {username.length >= 3 && !checking && available !== null && (
-                  <span
-                    className={`absolute right-3 top-1/2 -translate-y-1/2 text-[11px] ${
-                      available ? "text-diff-add" : "text-diff-remove"
-                    }`}
+            {user.username ? (
+              <div className="mt-2">
+                <p className="text-[13px] text-fg-muted">
+                  Your profile URL is{" "}
+                  <a
+                    href={`/${user.username}`}
+                    className="font-mono text-accent transition-colors duration-150 hover:text-accent-hover"
                   >
-                    {available ? "available" : "taken"}
-                  </span>
-                )}
-                {checking && (
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-fg-ghost">
-                    checking...
-                  </span>
-                )}
+                    replay.md/{user.username}
+                  </a>
+                </p>
               </div>
+            ) : (
+              <>
+                <p className="mt-2 text-[13px] text-fg-muted">
+                  Claim your profile URL at{" "}
+                  <span className="font-mono text-fg-subtle">
+                    replay.md/{username || "you"}
+                  </span>
+                </p>
 
-              <button
-                onClick={handleSave}
-                disabled={!available || saving || username.length < 3}
-                className="flex items-center gap-1.5 border border-border px-4 py-2 text-[13px] text-fg transition-colors duration-150 hover:border-border-hover disabled:text-fg-faint disabled:cursor-not-allowed rounded-[4px]"
-              >
-                {saved ? (
-                  <>
-                    <CheckMark className="size-3.5 text-diff-add" />
-                    Saved
-                  </>
-                ) : (
-                  "Save"
+                <div className="mt-4 flex items-center gap-3">
+                  <div className="relative flex-1">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[13px] text-fg-ghost">
+                      @
+                    </span>
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={(e) => {
+                        setUsername(e.target.value);
+                        setAvailable(null);
+                        setSaved(false);
+                        setError(null);
+                      }}
+                      placeholder="username"
+                      className="w-full border border-border bg-surface px-3 py-2 pl-8 font-mono text-[13px] text-fg placeholder:text-fg-faint focus:border-border-hover focus:outline-none rounded-[4px]"
+                    />
+                    {/* Availability indicator */}
+                    {username.length >= 3 && !checking && available !== null && (
+                      <span
+                        className={`absolute right-3 top-1/2 -translate-y-1/2 text-[11px] ${
+                          available ? "text-diff-add" : "text-diff-remove"
+                        }`}
+                      >
+                        {available ? "available" : "taken"}
+                      </span>
+                    )}
+                    {checking && (
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-fg-ghost">
+                        checking...
+                      </span>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={handleSave}
+                    disabled={!available || saving || username.length < 3}
+                    className="flex items-center gap-1.5 border border-border px-4 py-2 text-[13px] text-fg transition-colors duration-150 hover:border-border-hover disabled:text-fg-faint disabled:cursor-not-allowed rounded-[4px]"
+                  >
+                    {saved ? (
+                      <>
+                        <CheckMark className="size-3.5 text-diff-add" />
+                        Saved
+                      </>
+                    ) : (
+                      "Save"
+                    )}
+                  </button>
+                </div>
+
+                {error && (
+                  <p className="mt-2 text-[12px] text-diff-remove">{error}</p>
                 )}
-              </button>
-            </div>
-
-            {error && (
-              <p className="mt-2 text-[12px] text-diff-remove">{error}</p>
+              </>
             )}
           </div>
         </div>
