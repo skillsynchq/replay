@@ -82,13 +82,31 @@ function SidebarItem({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-1">
-      <span className="text-[11px] uppercase tracking-wider text-fg-ghost">
+    <div>
+      <span className="text-[10px] uppercase tracking-wider text-fg-ghost">
         {label}
       </span>
-      <div className="text-[12px] text-fg-muted">{children}</div>
+      <div className="text-[11px] text-fg-muted">{children}</div>
     </div>
   );
+}
+
+/**
+ * Check if a message has visible content worth rendering.
+ */
+function hasVisibleContent(msg: MessageData): boolean {
+  if (msg.role === "user") {
+    if (msg.contentBlocks) {
+      const hasText = msg.contentBlocks.some(
+        (b) => b.type === "text" && (b as { text: string }).text.trim()
+      );
+      return hasText;
+    }
+    return msg.content.trim().length > 0;
+  }
+  // Assistant messages: always render (they have tool_use, text, thinking, etc.)
+  if (msg.contentBlocks && msg.contentBlocks.length > 0) return true;
+  return msg.content.trim().length > 0;
 }
 
 function renderMessage(msg: MessageData, isOwner: boolean) {
@@ -97,17 +115,16 @@ function renderMessage(msg: MessageData, isOwner: boolean) {
   }
 
   if (msg.role === "user") {
-    // User messages: use content blocks if available, else flat text
+    // User messages: extract text, skip if empty (tool-result-only messages)
+    let text = msg.content;
     if (msg.contentBlocks) {
-      const textBlocks = msg.contentBlocks.filter(
-        (b) => b.type === "text"
-      );
-      const text = textBlocks
+      const textBlocks = msg.contentBlocks.filter((b) => b.type === "text");
+      text = textBlocks
         .map((b) => (b as { type: "text"; text: string }).text)
         .join("\n");
-      return <UserMessage key={msg.id} text={text || msg.content} />;
     }
-    return <UserMessage key={msg.id} text={msg.content} />;
+    if (!text.trim()) return null;
+    return <UserMessage key={msg.id} text={text} />;
   }
 
   // Assistant messages: render structured blocks or fall back to text
@@ -173,18 +190,20 @@ export function ThreadViewerClient({
         {/* Conversation — left column */}
         <PageReveal delay={80} className="min-w-0 flex-1">
           <div className="divide-y divide-border">
-            {messages.map((msg) => renderMessage(msg, isOwner))}
+            {messages
+              .filter((msg) => hasVisibleContent(msg))
+              .map((msg) => renderMessage(msg, isOwner))}
           </div>
         </PageReveal>
 
         {/* Sidebar — right column */}
-        <PageReveal delay={160} className="hidden w-56 shrink-0 lg:block">
-          <div className="sticky top-24 space-y-5">
+        <PageReveal delay={160} className="hidden w-48 shrink-0 lg:block">
+          <div className="sticky top-24 space-y-3">
             <div>
               <VisibilityBadge visibility={thread.visibility} />
             </div>
 
-            <div className="space-y-4 border-t border-border pt-5">
+            <div className="space-y-3 border-t border-border pt-3">
               <SidebarItem label="Thread">
                 <span className="font-mono">
                   {formatDate(thread.sessionTs)}
