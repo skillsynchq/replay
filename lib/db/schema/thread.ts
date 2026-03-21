@@ -1,0 +1,71 @@
+import {
+  pgTable,
+  uuid,
+  text,
+  integer,
+  boolean,
+  timestamp,
+  uniqueIndex,
+  index,
+} from "drizzle-orm/pg-core";
+
+export const thread = pgTable(
+  "thread",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: text("owner_id").notNull(),
+    ownerType: text("owner_type").notNull().default("user"),
+    slug: text("slug").notNull().unique(),
+    visibility: text("visibility").notNull().default("private"),
+    title: text("title"),
+    agent: text("agent").notNull(),
+    model: text("model"),
+    sessionId: text("session_id").notNull(),
+    projectPath: text("project_path"),
+    gitBranch: text("git_branch"),
+    sessionTs: timestamp("session_ts", { withTimezone: true }).notNull(),
+    messageCount: integer("message_count").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("uq_thread_owner_session").on(t.ownerId, t.sessionId),
+    index("idx_thread_owner").on(t.ownerId, t.ownerType),
+    index("idx_thread_visibility").on(t.visibility),
+    index("idx_thread_created").on(t.createdAt),
+  ]
+);
+
+export const message = pgTable(
+  "message",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    threadId: uuid("thread_id")
+      .notNull()
+      .references(() => thread.id, { onDelete: "cascade" }),
+    ordinal: integer("ordinal").notNull(),
+    role: text("role").notNull(),
+    content: text("content").notNull(),
+    redacted: boolean("redacted").notNull().default(false),
+    timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("uq_message_thread_ordinal").on(t.threadId, t.ordinal),
+  ]
+);
+
+export const threadShare = pgTable(
+  "thread_share",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    threadId: uuid("thread_id")
+      .notNull()
+      .references(() => thread.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("uq_thread_share_thread_user").on(t.threadId, t.userId),
+  ]
+);
