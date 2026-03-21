@@ -100,7 +100,11 @@ function hasVisibleContent(msg: MessageData): boolean {
   return msg.content.trim().length > 0;
 }
 
-function renderMessage(msg: MessageData, isOwner: boolean) {
+function renderMessage(
+  msg: MessageData,
+  isOwner: boolean,
+  toolResults: Map<string, string>
+) {
   if (msg.redacted && !isOwner) {
     return <RedactedMessage key={msg.id} />;
   }
@@ -108,28 +112,14 @@ function renderMessage(msg: MessageData, isOwner: boolean) {
   if (msg.role === "user") {
     if (msg.contentBlocks) {
       const textBlocks = msg.contentBlocks.filter((b) => b.type === "text");
-      const toolResultBlocks = msg.contentBlocks.filter(
-        (b) => b.type === "tool_result"
-      );
       const text = textBlocks
         .map((b) => (b as { type: "text"; text: string }).text)
         .join("\n");
 
-      // Has human text — render as user message
-      if (text.trim()) {
-        return <UserMessage key={msg.id} text={text} />;
-      }
-
-      // Tool-result-only — render the results without the > prompt
-      if (toolResultBlocks.length > 0) {
-        return (
-          <div key={msg.id} className="py-2">
-            <ContentBlockRenderer blocks={toolResultBlocks as never[]} />
-          </div>
-        );
-      }
-
-      return null;
+      // Only render if there's human text — tool_result blocks are
+      // paired with their tool_use in the assistant message via toolResults map
+      if (!text.trim()) return null;
+      return <UserMessage key={msg.id} text={text} />;
     }
 
     if (!msg.content.trim()) return null;
@@ -142,6 +132,7 @@ function renderMessage(msg: MessageData, isOwner: boolean) {
       {msg.contentBlocks ? (
         <ContentBlockRenderer
           blocks={msg.contentBlocks as never[]}
+          toolResults={toolResults}
         />
       ) : (
         <Markdown content={msg.content} />
@@ -157,6 +148,25 @@ export function ThreadViewerClient({
   promptCount,
   isOwner,
 }: ThreadViewerProps) {
+  // Build tool_use_id → tool_result content map across all messages
+  const toolResults = new Map<string, string>();
+  for (const msg of messages) {
+    if (msg.contentBlocks) {
+      for (const block of msg.contentBlocks) {
+        if (
+          block.type === "tool_result" &&
+          typeof (block as Record<string, unknown>).tool_use_id === "string" &&
+          typeof (block as Record<string, unknown>).content === "string"
+        ) {
+          toolResults.set(
+            (block as { tool_use_id: string }).tool_use_id,
+            (block as { content: string }).content
+          );
+        }
+      }
+    }
+  }
+
   // Calculate total token usage
   const totalUsage = messages.reduce(
     (acc, m) => {
@@ -199,7 +209,7 @@ export function ThreadViewerClient({
           <div className="divide-y divide-border">
             {messages
               .filter((msg) => hasVisibleContent(msg))
-              .map((msg) => renderMessage(msg, isOwner))}
+              .map((msg) => renderMessage(msg, isOwner, toolResults))}
           </div>
         </PageReveal>
 

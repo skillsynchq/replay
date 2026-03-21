@@ -31,15 +31,49 @@ interface ToolResultBlock {
 
 type ContentBlock = TextBlock | ThinkingBlock | ToolUseBlock | ToolResultBlock;
 
+// --- Helpers ---
+
+/** Shorten an absolute path to just the last 2-3 segments */
+function shortPath(path: string): string {
+  const parts = path.split("/").filter(Boolean);
+  if (parts.length <= 3) return path;
+  return parts.slice(-3).join("/");
+}
+
+/** Get a one-line summary for a tool_use block */
+function toolSummary(block: ToolUseBlock): string {
+  const input = block.input;
+  switch (block.name) {
+    case "Read":
+      return `Read ${shortPath(input.file_path as string)}`;
+    case "Edit":
+      return `Edit ${shortPath(input.file_path as string)}`;
+    case "Write":
+      return `Write ${shortPath(input.file_path as string)}`;
+    case "Bash":
+      return `$ ${(input.command as string).slice(0, 80)}${(input.command as string).length > 80 ? "…" : ""}`;
+    case "Glob":
+      return `Glob ${input.pattern as string}`;
+    case "Grep":
+      return `Grep ${input.pattern as string}${input.path ? ` in ${shortPath(input.path as string)}` : ""}`;
+    case "Agent":
+      return `Agent ${(input.description as string) ?? ""}`.slice(0, 80);
+    default:
+      return block.name;
+  }
+}
+
 // --- Main renderer ---
 
 export function ContentBlockRenderer({
   blocks,
+  toolResults,
 }: {
   blocks: ContentBlock[];
+  toolResults?: Map<string, string>;
 }) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {blocks.map((block, i) => {
         switch (block.type) {
           case "text":
@@ -47,9 +81,16 @@ export function ContentBlockRenderer({
           case "thinking":
             return <ThinkingBlockView key={i} block={block} />;
           case "tool_use":
-            return <ToolUseBlockView key={i} block={block} />;
+            return (
+              <ToolUseBlockView
+                key={i}
+                block={block}
+                result={toolResults?.get(block.id)}
+              />
+            );
           case "tool_result":
-            return <ToolResultBlockView key={i} block={block} />;
+            // Rendered inline with tool_use — skip standalone
+            return null;
           default:
             return null;
         }
@@ -69,78 +110,127 @@ function TextBlockView({ block }: { block: TextBlock }) {
 
 function ThinkingBlockView({ block }: { block: ThinkingBlock }) {
   const [open, setOpen] = useState(false);
-  const preview = block.thinking.slice(0, 80);
 
   return (
-    <div className="border-l-2 border-fg-faint pl-3">
+    <div className="border border-border rounded-[4px] overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 text-[11px] text-fg-ghost transition-colors duration-150 hover:text-fg-subtle"
+        className="flex w-full items-center gap-2 bg-surface px-3 py-1.5 text-left transition-colors duration-150 hover:bg-surface-raised"
       >
-        <span className="font-mono">{open ? "▾" : "▸"}</span>
-        <span className="italic">Thinking</span>
+        <span className="text-[11px] italic text-fg-ghost">Thinking</span>
         {!open && (
-          <span className="ml-1 text-fg-faint truncate max-w-[300px]">
-            {preview}...
+          <span className="flex-1 truncate font-mono text-[11px] text-fg-faint">
+            {block.thinking.slice(0, 80)}…
           </span>
         )}
+        <span className="ml-auto text-fg-faint text-[11px] shrink-0">
+          {open ? "▾" : "›"}
+        </span>
       </button>
       {open && (
-        <p className="mt-2 text-[12px] leading-relaxed text-fg-ghost whitespace-pre-wrap">
-          {block.thinking}
-        </p>
+        <div className="border-t border-border px-3 py-2">
+          <pre className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-fg-ghost max-h-[400px] overflow-y-auto">
+            {block.thinking}
+          </pre>
+        </div>
       )}
     </div>
   );
 }
 
-// --- Tool Use ---
+// --- Tool Use (paired with result) ---
 
-function ToolUseBlockView({ block }: { block: ToolUseBlock }) {
-  const name = block.name;
-  const input = block.input;
-
-  switch (name) {
-    case "Edit":
-      return <EditToolView input={input} />;
-    case "Write":
-      return <WriteToolView input={input} />;
-    case "Read":
-      return <FileIndicator action="Read" path={input.file_path as string} />;
-    case "Bash":
-      return <BashToolView input={input} />;
-    case "Glob":
-      return (
-        <SearchIndicator
-          tool="Glob"
-          pattern={input.pattern as string}
-          path={input.path as string | undefined}
-        />
-      );
-    case "Grep":
-      return (
-        <SearchIndicator
-          tool="Grep"
-          pattern={input.pattern as string}
-          path={input.path as string | undefined}
-        />
-      );
-    default:
-      return <GenericToolView name={name} input={input} />;
+function ToolUseBlockView({
+  block,
+  result,
+}: {
+  block: ToolUseBlock;
+  result?: string;
+}) {
+  // Edit gets special rendering — always expanded as a diff
+  if (block.name === "Edit") {
+    return <EditToolView input={block.input} />;
   }
+
+  return <ToolPill block={block} result={result} />;
 }
 
-// --- Edit tool (diff view) ---
+/** Compact single-line tool indicator with expand chevron */
+function ToolPill({
+  block,
+  result,
+}: {
+  block: ToolUseBlock;
+  result?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const summary = toolSummary(block);
+  const hasExpandableContent =
+    result || block.name === "Write" || block.name === "Bash";
+
+  // Write tool: show full content when expanded
+  const expandContent = () => {
+    if (block.name === "Write" && open) {
+      return (
+        <pre className="mt-2 overflow-x-auto font-mono text-[12px] leading-[1.7] text-fg-muted whitespace-pre-wrap">
+          {block.input.content as string}
+        </pre>
+      );
+    }
+    if (result && open) {
+      return (
+        <pre className="mt-2 overflow-x-auto font-mono text-[11px] leading-relaxed text-fg-ghost whitespace-pre-wrap max-h-[300px] overflow-y-auto">
+          {result}
+        </pre>
+      );
+    }
+    return null;
+  };
+
+  if (!hasExpandableContent) {
+    // Non-expandable — just a static indicator
+    return (
+      <div className="flex items-center gap-2 border border-border bg-surface px-3 py-1.5 font-mono text-[11px] text-fg-ghost rounded-[4px]">
+        <FileMark className="size-3 shrink-0 text-fg-faint" />
+        <span className="truncate">{summary}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border border-border rounded-[4px] overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center gap-2 bg-surface px-3 py-1.5 text-left transition-colors duration-150 hover:bg-surface-raised"
+      >
+        <FileMark className="size-3 shrink-0 text-fg-faint" />
+        <span className="flex-1 truncate font-mono text-[11px] text-fg-ghost">
+          {summary}
+        </span>
+        <span className="text-fg-faint text-[11px] shrink-0">
+          {open ? "▾" : "›"}
+        </span>
+      </button>
+      {open && (
+        <div className="border-t border-border px-3 py-2">
+          {expandContent()}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Edit tool (always expanded as diff) ---
 
 function EditToolView({ input }: { input: Record<string, unknown> }) {
-  const filePath = input.file_path as string;
+  const filePath = shortPath(input.file_path as string);
   const oldString = input.old_string as string;
   const newString = input.new_string as string;
 
   return (
     <div className="overflow-hidden border border-border rounded-[4px]">
       <div className="flex items-center gap-2 border-b border-border bg-surface px-3 py-1.5">
-        <FileMark className="size-3 text-fg-ghost" />
+        <FileMark className="size-3 text-fg-faint" />
         <span className="font-mono text-[11px] text-fg-subtle">
           {filePath}
         </span>
@@ -161,171 +251,6 @@ function EditToolView({ input }: { input: Record<string, unknown> }) {
           ))}
         </pre>
       </div>
-    </div>
-  );
-}
-
-// --- Write tool (file creation) ---
-
-function WriteToolView({ input }: { input: Record<string, unknown> }) {
-  const [open, setOpen] = useState(false);
-  const filePath = input.file_path as string;
-  const content = input.content as string;
-  const lineCount = content.split("\n").length;
-
-  return (
-    <div className="border border-border rounded-[4px]">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-2 px-3 py-1.5 text-left bg-surface transition-colors duration-150 hover:bg-surface-raised"
-      >
-        <FileMark className="size-3 text-fg-ghost" />
-        <span className="font-mono text-[11px] text-fg-subtle">
-          Write {filePath}
-        </span>
-        <span className="ml-auto font-mono text-[10px] text-fg-faint">
-          {lineCount} lines
-        </span>
-        <span className="font-mono text-[11px] text-fg-ghost">
-          {open ? "▾" : "▸"}
-        </span>
-      </button>
-      {open && (
-        <div className="overflow-x-auto border-t border-border">
-          <pre className="p-3 font-mono text-[12px] leading-[1.7] text-fg-muted">
-            {content}
-          </pre>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// --- Bash tool ---
-
-function BashToolView({ input }: { input: Record<string, unknown> }) {
-  const command = input.command as string;
-  const description = input.description as string | undefined;
-
-  return (
-    <div className="border border-border bg-surface rounded-[4px] px-3 py-2">
-      {description && (
-        <p className="mb-1 text-[11px] text-fg-ghost">{description}</p>
-      )}
-      <div className="flex items-start gap-2 font-mono text-[12px]">
-        <span className="text-fg-ghost select-none">$</span>
-        <code className="text-fg whitespace-pre-wrap">{command}</code>
-      </div>
-    </div>
-  );
-}
-
-// --- File indicator (Read) ---
-
-function FileIndicator({
-  action,
-  path,
-}: {
-  action: string;
-  path: string;
-}) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <FileMark className="size-3 text-fg-ghost" />
-      <span className="font-mono text-[11px] text-fg-ghost">
-        {action} {path}
-      </span>
-    </div>
-  );
-}
-
-// --- Search indicator (Glob/Grep) ---
-
-function SearchIndicator({
-  tool,
-  pattern,
-  path,
-}: {
-  tool: string;
-  pattern: string;
-  path?: string;
-}) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <span className="font-mono text-[11px] text-fg-ghost">
-        {tool}
-      </span>
-      <code className="border border-border bg-surface px-1.5 py-0.5 font-mono text-[11px] text-fg-subtle rounded-[2px]">
-        {pattern}
-      </code>
-      {path && (
-        <span className="font-mono text-[11px] text-fg-faint">
-          in {path}
-        </span>
-      )}
-    </div>
-  );
-}
-
-// --- Generic tool (fallback) ---
-
-function GenericToolView({
-  name,
-  input,
-}: {
-  name: string;
-  input: Record<string, unknown>;
-}) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div className="flex items-center gap-1.5">
-      <button
-        onClick={() => setOpen(!open)}
-        className="font-mono text-[11px] text-fg-ghost transition-colors duration-150 hover:text-fg-subtle"
-      >
-        <span>{open ? "▾" : "▸"}</span> {name}
-      </button>
-      {open && (
-        <pre className="mt-1 overflow-x-auto border border-border bg-surface p-2 font-mono text-[10px] text-fg-ghost rounded-[2px]">
-          {JSON.stringify(input, null, 2)}
-        </pre>
-      )}
-    </div>
-  );
-}
-
-// --- Tool Result ---
-
-function ToolResultBlockView({ block }: { block: ToolResultBlock }) {
-  const [open, setOpen] = useState(false);
-  const preview = block.content.slice(0, 60);
-  const isLong = block.content.length > 60;
-
-  return (
-    <div className="border-l border-border pl-3">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 text-[11px] text-fg-ghost transition-colors duration-150 hover:text-fg-subtle"
-      >
-        <span className="font-mono">{open ? "▾" : "▸"}</span>
-        <span>Output</span>
-        {!open && isLong && (
-          <span className="ml-1 text-fg-faint truncate max-w-[300px]">
-            {preview}...
-          </span>
-        )}
-      </button>
-      {open && (
-        <pre className="mt-2 overflow-x-auto font-mono text-[11px] leading-relaxed text-fg-ghost whitespace-pre-wrap">
-          {block.content}
-        </pre>
-      )}
-      {!open && !isLong && block.content && (
-        <p className="mt-1 font-mono text-[11px] text-fg-ghost">
-          {block.content}
-        </p>
-      )}
     </div>
   );
 }
