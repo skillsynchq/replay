@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { FileMark } from "./icons";
+import {
+  FileMark,
+  ChevronRight,
+  ChevronDown,
+  TerminalIcon,
+  BrainIcon,
+  SearchIcon,
+} from "./icons";
 import { Markdown } from "./markdown";
 
 // --- Types ---
@@ -33,34 +40,58 @@ type ContentBlock = TextBlock | ThinkingBlock | ToolUseBlock | ToolResultBlock;
 
 // --- Helpers ---
 
-/** Shorten an absolute path to just the last 2-3 segments */
 function shortPath(path: string): string {
   const parts = path.split("/").filter(Boolean);
   if (parts.length <= 3) return path;
   return parts.slice(-3).join("/");
 }
 
-/** Get a one-line summary for a tool_use block */
 function toolSummary(block: ToolUseBlock): string {
   const input = block.input;
   switch (block.name) {
     case "Read":
-      return `Read ${shortPath(input.file_path as string)}`;
+      return shortPath(input.file_path as string);
     case "Edit":
-      return `Edit ${shortPath(input.file_path as string)}`;
+      return shortPath(input.file_path as string);
     case "Write":
-      return `Write ${shortPath(input.file_path as string)}`;
-    case "Bash":
-      return `$ ${(input.command as string).slice(0, 80)}${(input.command as string).length > 80 ? "…" : ""}`;
+      return shortPath(input.file_path as string);
+    case "Bash": {
+      const cmd = input.command as string;
+      return cmd.length > 80 ? cmd.slice(0, 80) + "…" : cmd;
+    }
     case "Glob":
-      return `Glob ${input.pattern as string}`;
+      return input.pattern as string;
     case "Grep":
-      return `Grep ${input.pattern as string}${input.path ? ` in ${shortPath(input.path as string)}` : ""}`;
+      return `${input.pattern as string}${input.path ? ` in ${shortPath(input.path as string)}` : ""}`;
     case "Agent":
-      return `Agent ${(input.description as string) ?? ""}`.slice(0, 80);
+      return ((input.description as string) ?? "").slice(0, 60);
     default:
       return block.name;
   }
+}
+
+function toolIcon(name: string) {
+  switch (name) {
+    case "Read":
+    case "Edit":
+    case "Write":
+      return <FileMark className="size-3 shrink-0 text-fg-faint" />;
+    case "Bash":
+      return <TerminalIcon className="size-3 shrink-0 text-fg-faint" />;
+    case "Glob":
+    case "Grep":
+      return <SearchIcon className="size-3 shrink-0 text-fg-faint" />;
+    default:
+      return <FileMark className="size-3 shrink-0 text-fg-faint" />;
+  }
+}
+
+function ExpandIcon({ open }: { open: boolean }) {
+  return open ? (
+    <ChevronDown className="size-3 shrink-0 text-fg-faint" />
+  ) : (
+    <ChevronRight className="size-3 shrink-0 text-fg-faint" />
+  );
 }
 
 // --- Main renderer ---
@@ -89,7 +120,6 @@ export function ContentBlockRenderer({
               />
             );
           case "tool_result":
-            // Rendered inline with tool_use — skip standalone
             return null;
           default:
             return null;
@@ -117,15 +147,14 @@ function ThinkingBlockView({ block }: { block: ThinkingBlock }) {
         onClick={() => setOpen(!open)}
         className="flex w-full items-center gap-2 bg-surface px-3 py-1.5 text-left transition-colors duration-150 hover:bg-surface-raised"
       >
+        <BrainIcon className="size-3 shrink-0 text-fg-faint" />
         <span className="text-[11px] italic text-fg-ghost">Thinking</span>
         {!open && (
           <span className="flex-1 truncate font-mono text-[11px] text-fg-faint">
             {block.thinking.slice(0, 80)}…
           </span>
         )}
-        <span className="ml-auto text-fg-faint text-[11px] shrink-0">
-          {open ? "▾" : "›"}
-        </span>
+        <ExpandIcon open={open} />
       </button>
       {open && (
         <div className="border-t border-border px-3 py-2">
@@ -147,15 +176,12 @@ function ToolUseBlockView({
   block: ToolUseBlock;
   result?: string;
 }) {
-  // Edit gets special rendering — always expanded as a diff
   if (block.name === "Edit") {
     return <EditToolView input={block.input} />;
   }
-
   return <ToolPill block={block} result={result} />;
 }
 
-/** Compact single-line tool indicator with expand chevron */
 function ToolPill({
   block,
   result,
@@ -168,18 +194,17 @@ function ToolPill({
   const hasExpandableContent =
     result || block.name === "Write" || block.name === "Bash";
 
-  // Write tool: show full content when expanded
   const expandContent = () => {
     if (block.name === "Write" && open) {
       return (
-        <pre className="mt-2 overflow-x-auto font-mono text-[12px] leading-[1.7] text-fg-muted whitespace-pre-wrap">
+        <pre className="overflow-x-auto font-mono text-[12px] leading-[1.7] text-fg-muted whitespace-pre-wrap">
           {block.input.content as string}
         </pre>
       );
     }
     if (result && open) {
       return (
-        <pre className="mt-2 overflow-x-auto font-mono text-[11px] leading-relaxed text-fg-ghost whitespace-pre-wrap max-h-[300px] overflow-y-auto">
+        <pre className="overflow-x-auto font-mono text-[11px] leading-relaxed text-fg-ghost whitespace-pre-wrap max-h-[300px] overflow-y-auto">
           {result}
         </pre>
       );
@@ -188,10 +213,9 @@ function ToolPill({
   };
 
   if (!hasExpandableContent) {
-    // Non-expandable — just a static indicator
     return (
       <div className="flex items-center gap-2 border border-border bg-surface px-3 py-1.5 font-mono text-[11px] text-fg-ghost rounded-[4px]">
-        <FileMark className="size-3 shrink-0 text-fg-faint" />
+        {toolIcon(block.name)}
         <span className="truncate">{summary}</span>
       </div>
     );
@@ -203,13 +227,11 @@ function ToolPill({
         onClick={() => setOpen(!open)}
         className="flex w-full items-center gap-2 bg-surface px-3 py-1.5 text-left transition-colors duration-150 hover:bg-surface-raised"
       >
-        <FileMark className="size-3 shrink-0 text-fg-faint" />
+        {toolIcon(block.name)}
         <span className="flex-1 truncate font-mono text-[11px] text-fg-ghost">
           {summary}
         </span>
-        <span className="text-fg-faint text-[11px] shrink-0">
-          {open ? "▾" : "›"}
-        </span>
+        <ExpandIcon open={open} />
       </button>
       {open && (
         <div className="border-t border-border px-3 py-2">
