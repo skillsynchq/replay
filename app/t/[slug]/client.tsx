@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { ClaudeMark } from "@/app/components/icons";
 import { VisibilitySelector } from "@/app/components/visibility-selector";
@@ -151,6 +152,31 @@ export function ThreadViewerClient({
   promptCount,
   isOwner,
 }: ThreadViewerProps) {
+  const scrolledRef = useRef(false);
+
+  // Read target ordinal from hash (e.g. #m42) and scroll to it
+  useEffect(() => {
+    if (scrolledRef.current) return;
+    const hash = window.location.hash;
+    const match = hash.match(/^#m(\d+)$/);
+    if (!match) return;
+    scrolledRef.current = true;
+    const ordinal = Number(match[1]);
+
+    const timer = setTimeout(() => {
+      const el = document.querySelector(
+        `[data-ordinal="${ordinal}"]`
+      );
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.add("search-highlight-flash");
+      }
+      // Clean up the hash so it doesn't persist on refresh
+      history.replaceState(null, "", window.location.pathname);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Build tool_use_id → tool_result content map across all messages
   const toolResults = new Map<string, string>();
   for (const msg of messages) {
@@ -214,7 +240,14 @@ export function ThreadViewerClient({
           <div className="divide-y divide-border">
             {messages
               .filter((msg) => hasVisibleContent(msg))
-              .map((msg) => renderMessage(msg, isOwner, toolResults))}
+              .map((msg) => (
+                <div
+                  key={msg.id}
+                  data-ordinal={msg.ordinal}
+                >
+                  {renderMessage(msg, isOwner, toolResults)}
+                </div>
+              ))}
           </div>
         </PageReveal>
 

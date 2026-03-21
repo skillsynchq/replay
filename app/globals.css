@@ -99,6 +99,17 @@ body {
   animation: border-pulse 600ms ease-out 500ms both;
 }
 
+/* Search result highlight flash — left border that fades */
+@keyframes highlight-flash {
+  0%, 30% { border-left-color: var(--accent); background-color: color-mix(in srgb, var(--accent) 6%, transparent); }
+  100% { border-left-color: transparent; background-color: transparent; }
+}
+
+.search-highlight-flash {
+  border-left: 2px solid transparent;
+  animation: highlight-flash 3s ease-out both;
+}
+
 /* Stagger delays for children */
 .stagger-1 { animation-delay: 0ms; }
 .stagger-2 { animation-delay: 80ms; }

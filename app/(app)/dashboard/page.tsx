@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { ThreadCard } from "@/app/components/thread-card";
 import { PageReveal } from "@/app/components/page-reveal";
 import { CopyButton } from "@/app/components/copy-button";
+import { useThreadSearch } from "@/lib/search/use-thread-search";
+import { SearchResults } from "@/app/components/search-results";
 
 interface ThreadItem {
   id: string;
@@ -31,6 +33,9 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
 
+  const { query, setQuery, results, syncing, isSearching, totalIndexed } =
+    useThreadSearch();
+
   useEffect(() => {
     setLoading(true);
     fetch(`/api/threads?page=${page}&limit=20`)
@@ -44,6 +49,7 @@ export default function DashboardPage() {
   }, [page]);
 
   const totalPages = data ? Math.ceil(data.total / data.limit) : 0;
+  const hasThreads = data && data.total > 0;
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -54,9 +60,31 @@ export default function DashboardPage() {
         </p>
       </PageReveal>
 
+      {/* Search — only show when user has threads */}
+      {hasThreads && (
+        <PageReveal delay={40}>
+          <div className="mt-6 relative">
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search threads..."
+              className="w-full border border-border bg-surface rounded-[4px] px-3 py-2 text-[13px] text-fg placeholder:text-fg-ghost outline-none focus:border-fg-faint transition-colors duration-150"
+            />
+            {syncing && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 size-3.5 border-2 border-fg-ghost/30 border-t-fg-ghost rounded-full animate-spin" />
+            )}
+          </div>
+        </PageReveal>
+      )}
+
       <PageReveal delay={80}>
-        <div className="mt-8">
-          {loading && !data ? (
+        <div className="mt-6">
+          {/* Search results mode */}
+          {isSearching ? (
+            <SearchResults results={results} query={query} />
+          ) : /* Normal paginated list */
+          loading && !data ? (
             <p className="text-[13px] text-fg-ghost">Loading...</p>
           ) : data && data.threads.length === 0 ? (
             /* Empty state */
@@ -93,7 +121,7 @@ export default function DashboardPage() {
                 ))}
               </div>
 
-              {/* Pagination */}
+              {/* Pagination — hidden during search */}
               {totalPages > 1 && (
                 <div className="mt-8 flex items-center justify-center gap-4">
                   <button
