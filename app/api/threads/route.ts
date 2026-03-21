@@ -4,13 +4,16 @@ import { eq, and, desc, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { thread, message } from "@/lib/db/schema";
 import { requireAuth, isCliRequest } from "@/lib/auth-helpers";
-import { uploadThreadSchema } from "@/lib/validations";
+import {
+  uploadThreadSchema,
+  extractTextFromBlocks,
+  type ContentBlock,
+} from "@/lib/validations";
 
 /**
  * POST /api/threads — Upload a thread from the CLI
  */
 export async function POST(request: NextRequest) {
-  // Only allow uploads from the CLI
   if (!isCliRequest(request)) {
     return NextResponse.json(
       { error: "Threads can only be uploaded via the Replay CLI" },
@@ -57,10 +60,23 @@ export async function POST(request: NextRequest) {
   }
 
   const slug = nanoid(10);
-  const title =
-    messages.find((m) => m.role === "user")?.text.slice(0, 200) ?? null;
 
-  // Insert thread and messages
+  // Derive title: use session title, or extract from first user message
+  let title = sessionData.title ?? null;
+  if (!title) {
+    const firstUserMsg = messages.find((m) => m.role === "user");
+    if (firstUserMsg) {
+      if ("content" in firstUserMsg && firstUserMsg.content) {
+        title = extractTextFromBlocks(
+          firstUserMsg.content as ContentBlock[]
+        ).slice(0, 200);
+      } else if ("text" in firstUserMsg && firstUserMsg.text) {
+        title = firstUserMsg.text.slice(0, 200);
+      }
+    }
+  }
+
+  // Insert thread
   const [inserted] = await db
     .insert(thread)
     .values({
@@ -68,26 +84,47 @@ export async function POST(request: NextRequest) {
       ownerType: "user",
       slug,
       visibility: "private",
-      title,
+      title: title || null,
       agent: sessionData.agent,
       model: sessionData.model ?? null,
       sessionId: sessionData.id,
       projectPath: sessionData.project_path ?? null,
       gitBranch: sessionData.git_branch ?? null,
+      cliVersion: sessionData.cli_version ?? null,
       sessionTs: new Date(sessionData.timestamp),
       messageCount: messages.length,
     })
     .returning({ id: thread.id, slug: thread.slug });
 
+  // Insert messages
   if (messages.length > 0) {
     await db.insert(message).values(
-      messages.map((m, i) => ({
-        threadId: inserted.id,
-        ordinal: i,
-        role: m.role,
-        content: m.text,
-        timestamp: new Date(m.timestamp),
-      }))
+      messages.map((m, i) => {
+        // Determine content text (for backward compat + search)
+        let contentText: string;
+        let contentBlocks: ContentBlock[] | null = null;
+
+        if ("content" in m && m.content && Array.isArray(m.content)) {
+          contentBlocks = m.content as ContentBlock[];
+          contentText = extractTextFromBlocks(contentBlocks);
+        } else if ("text" in m && m.text) {
+          contentText = m.text;
+        } else {
+          contentText = "";
+        }
+
+        return {
+          threadId: inserted.id,
+          ordinal: i,
+          role: m.role,
+          content: contentText,
+          contentBlocks: contentBlocks ? JSON.stringify(contentBlocks) : null,
+          messageModel: "model" in m ? (m.model ?? null) : null,
+          stopReason: "stop_reason" in m ? (m.stop_reason ?? null) : null,
+          usage: "usage" in m && m.usage ? JSON.stringify(m.usage) : null,
+          timestamp: new Date(m.timestamp),
+        };
+      })
     );
   }
 

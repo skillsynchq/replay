@@ -82,6 +82,7 @@ export default async function ThreadPage({
             visibility: threadRow.visibility,
             projectPath: threadRow.projectPath,
             gitBranch: threadRow.gitBranch,
+            cliVersion: threadRow.cliVersion,
             messageCount: threadRow.messageCount,
             sessionTs: threadRow.sessionTs.toISOString(),
             createdAt: threadRow.createdAt.toISOString(),
@@ -91,6 +92,13 @@ export default async function ThreadPage({
             ordinal: m.ordinal,
             role: m.role,
             content: m.redacted && !isOwner ? "" : m.content,
+            contentBlocks:
+              m.redacted && !isOwner
+                ? null
+                : ((m.contentBlocks ?? null) as Record<string, unknown>[] | null),
+            model: m.messageModel,
+            stopReason: m.stopReason,
+            usage: m.usage as { input_tokens: number; output_tokens: number } | null,
             redacted: m.redacted,
             timestamp: m.timestamp.toISOString(),
           }))}

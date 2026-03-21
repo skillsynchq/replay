@@ -4,11 +4,25 @@ import Link from "next/link";
 import { ClaudeMark } from "@/app/components/icons";
 import { VisibilityBadge } from "@/app/components/visibility-badge";
 import { PageReveal } from "@/app/components/page-reveal";
+import { ContentBlockRenderer } from "@/app/components/content-renderer";
 import {
   UserMessage,
   AssistantMessage,
   RedactedMessage,
 } from "@/app/components/thread-message";
+
+interface MessageData {
+  id: string;
+  ordinal: number;
+  role: string;
+  content: string;
+  contentBlocks: Record<string, unknown>[] | null;
+  model: string | null;
+  stopReason: string | null;
+  usage: { input_tokens: number; output_tokens: number } | null;
+  redacted: boolean;
+  timestamp: string;
+}
 
 interface ThreadViewerProps {
   thread: {
@@ -20,18 +34,12 @@ interface ThreadViewerProps {
     visibility: string;
     projectPath: string | null;
     gitBranch: string | null;
+    cliVersion: string | null;
     messageCount: number;
     sessionTs: string;
     createdAt: string;
   };
-  messages: Array<{
-    id: string;
-    ordinal: number;
-    role: string;
-    content: string;
-    redacted: boolean;
-    timestamp: string;
-  }>;
+  messages: MessageData[];
   owner: {
     name: string;
     username: string | null;
@@ -83,6 +91,41 @@ function SidebarItem({
   );
 }
 
+function renderMessage(msg: MessageData, isOwner: boolean) {
+  if (msg.redacted && !isOwner) {
+    return <RedactedMessage key={msg.id} />;
+  }
+
+  if (msg.role === "user") {
+    // User messages: use content blocks if available, else flat text
+    if (msg.contentBlocks) {
+      const textBlocks = msg.contentBlocks.filter(
+        (b) => b.type === "text"
+      );
+      const text = textBlocks
+        .map((b) => (b as { type: "text"; text: string }).text)
+        .join("\n");
+      return <UserMessage key={msg.id} text={text || msg.content} />;
+    }
+    return <UserMessage key={msg.id} text={msg.content} />;
+  }
+
+  // Assistant messages: render structured blocks or fall back to text
+  return (
+    <AssistantMessage key={msg.id}>
+      {msg.contentBlocks ? (
+        <ContentBlockRenderer
+          blocks={msg.contentBlocks as never[]}
+        />
+      ) : (
+        <p className="text-[13px] leading-relaxed text-fg whitespace-pre-wrap">
+          {msg.content}
+        </p>
+      )}
+    </AssistantMessage>
+  );
+}
+
 export function ThreadViewerClient({
   thread,
   messages,
@@ -90,6 +133,18 @@ export function ThreadViewerClient({
   promptCount,
   isOwner,
 }: ThreadViewerProps) {
+  // Calculate total token usage
+  const totalUsage = messages.reduce(
+    (acc, m) => {
+      if (m.usage) {
+        acc.input += m.usage.input_tokens;
+        acc.output += m.usage.output_tokens;
+      }
+      return acc;
+    },
+    { input: 0, output: 0 }
+  );
+
   return (
     <div className="mx-auto max-w-6xl">
       {/* Title + Author — centered */}
@@ -118,42 +173,22 @@ export function ThreadViewerClient({
         {/* Conversation — left column */}
         <PageReveal delay={80} className="min-w-0 flex-1">
           <div className="divide-y divide-border">
-            {messages.map((msg) => {
-              if (msg.redacted && !isOwner) {
-                return (
-                  <RedactedMessage key={msg.id} />
-                );
-              }
-
-              if (msg.role === "user") {
-                return (
-                  <UserMessage key={msg.id} text={msg.content} />
-                );
-              }
-
-              return (
-                <AssistantMessage key={msg.id}>
-                  <p className="text-[13px] leading-relaxed text-fg-muted whitespace-pre-wrap">
-                    {msg.content}
-                  </p>
-                </AssistantMessage>
-              );
-            })}
+            {messages.map((msg) => renderMessage(msg, isOwner))}
           </div>
         </PageReveal>
 
         {/* Sidebar — right column */}
         <PageReveal delay={160} className="hidden w-56 shrink-0 lg:block">
           <div className="sticky top-24 space-y-5">
-            {/* Visibility */}
             <div>
               <VisibilityBadge visibility={thread.visibility} />
             </div>
 
-            {/* Thread metadata */}
             <div className="space-y-4 border-t border-border pt-5">
               <SidebarItem label="Thread">
-                <span className="font-mono">{formatDate(thread.sessionTs)}</span>
+                <span className="font-mono">
+                  {formatDate(thread.sessionTs)}
+                </span>
               </SidebarItem>
 
               {thread.projectPath && (
@@ -180,9 +215,7 @@ export function ThreadViewerClient({
               </SidebarItem>
 
               {thread.model && (
-                <SidebarItem label="Model">
-                  {thread.model}
-                </SidebarItem>
+                <SidebarItem label="Model">{thread.model}</SidebarItem>
               )}
 
               <SidebarItem label="Prompts">
@@ -192,6 +225,23 @@ export function ThreadViewerClient({
               <SidebarItem label="Messages">
                 <span className="font-mono">{thread.messageCount}</span>
               </SidebarItem>
+
+              {totalUsage.input > 0 && (
+                <SidebarItem label="Tokens">
+                  <span className="font-mono text-[11px]">
+                    {totalUsage.input.toLocaleString()} in /{" "}
+                    {totalUsage.output.toLocaleString()} out
+                  </span>
+                </SidebarItem>
+              )}
+
+              {thread.cliVersion && (
+                <SidebarItem label="CLI">
+                  <span className="font-mono text-[11px]">
+                    v{thread.cliVersion}
+                  </span>
+                </SidebarItem>
+              )}
             </div>
           </div>
         </PageReveal>
