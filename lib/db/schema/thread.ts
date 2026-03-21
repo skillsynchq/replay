@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   pgTable,
   uuid,
@@ -26,6 +27,7 @@ export const thread = pgTable(
     gitBranch: text("git_branch"),
     sessionTs: timestamp("session_ts", { withTimezone: true }).notNull(),
     cliVersion: text("cli_version"),
+    tags: text("tags").array().notNull().default(sql`'{}'::text[]`),
     messageCount: integer("message_count").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

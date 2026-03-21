@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { ClaudeMark } from "@/app/components/icons";
-import { VisibilityBadge } from "@/app/components/visibility-badge";
+import { VisibilitySelector } from "@/app/components/visibility-selector";
+import { EditableTitle } from "@/app/components/editable-title";
+import { TagEditor } from "@/app/components/tag-editor";
 import { PageReveal } from "@/app/components/page-reveal";
 import { ContentBlockRenderer } from "@/app/components/content-renderer";
 import { Markdown } from "@/app/components/markdown";
@@ -30,6 +32,7 @@ interface ThreadViewerProps {
     id: string;
     slug: string;
     title: string | null;
+    tags: string[];
     agent: string;
     model: string | null;
     visibility: string;
@@ -183,9 +186,11 @@ export function ThreadViewerClient({
     <div className="mx-auto max-w-6xl">
       {/* Title + Author — centered */}
       <PageReveal className="text-center">
-        <h1 className="text-[clamp(21px,3vw,34px)] font-medium leading-tight text-fg">
-          {thread.title ?? "Untitled thread"}
-        </h1>
+        <EditableTitle
+          title={thread.title}
+          slug={thread.slug}
+          isOwner={isOwner}
+        />
         <p className="mt-2 text-[13px] text-fg-muted">
           {owner.name}
           {owner.username && (
@@ -217,7 +222,11 @@ export function ThreadViewerClient({
         <PageReveal delay={160} className="hidden w-48 shrink-0 lg:block">
           <div className="sticky top-24 space-y-3">
             <div>
-              <VisibilityBadge visibility={thread.visibility} />
+              <VisibilitySelector
+                visibility={thread.visibility}
+                slug={thread.slug}
+                isOwner={isOwner}
+              />
             </div>
 
             <div className="space-y-3 border-t border-border pt-3">
@@ -279,6 +288,16 @@ export function ThreadViewerClient({
                 </SidebarItem>
               )}
             </div>
+
+            {(isOwner || thread.tags.length > 0) && (
+              <div className="border-t border-border pt-3">
+                <TagEditor
+                  tags={thread.tags}
+                  slug={thread.slug}
+                  isOwner={isOwner}
+                />
+              </div>
+            )}
           </div>
         </PageReveal>
       </div>

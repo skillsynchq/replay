@@ -77,6 +77,7 @@ export default async function ThreadPage({
             id: threadRow.id,
             slug: threadRow.slug,
             title: threadRow.title,
+            tags: threadRow.tags ?? [],
             agent: threadRow.agent,
             model: threadRow.model,
             visibility: threadRow.visibility,

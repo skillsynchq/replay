@@ -6,6 +6,43 @@ import { requireAuth } from "@/lib/auth-helpers";
 import { shareThreadSchema } from "@/lib/validations";
 
 /**
+ * GET /api/threads/[slug]/share — List users this thread is shared with (owner only)
+ */
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ slug: string }> }
+) {
+  const { slug } = await params;
+  const [session, authError] = await requireAuth(request);
+  if (authError) return authError;
+
+  const threadRow = await db
+    .select()
+    .from(thread)
+    .where(eq(thread.slug, slug))
+    .limit(1)
+    .then((rows) => rows[0] ?? null);
+
+  if (!threadRow || threadRow.ownerId !== session.user.id) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const shares = await db.execute<{
+    user_id: string;
+    username: string;
+    name: string;
+  }>(
+    sql`SELECT ts.user_id, u.username, u.name
+        FROM thread_share ts
+        JOIN "user" u ON u.id = ts.user_id
+        WHERE ts.thread_id = ${threadRow.id}
+        ORDER BY ts.created_at ASC`
+  );
+
+  return NextResponse.json({ shares: shares.rows ?? [] });
+}
+
+/**
  * POST /api/threads/[slug]/share — Share a thread with a user by username
  */
 export async function POST(

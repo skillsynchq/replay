@@ -129,13 +129,14 @@ export async function PATCH(
     );
   }
 
-  const { visibility, title, redactions } = parsed.data;
+  const { visibility, title, tags, redactions } = parsed.data;
 
   const updates: Partial<typeof thread.$inferInsert> = {
     updatedAt: new Date(),
   };
   if (visibility !== undefined) updates.visibility = visibility;
   if (title !== undefined) updates.title = title;
+  if (tags !== undefined) updates.tags = tags;
 
   await db.update(thread).set(updates).where(eq(thread.id, threadRow.id));
 

@@ -87,6 +87,7 @@ export type UploadThreadInput = z.infer<typeof uploadThreadSchema>;
 export const updateThreadSchema = z.object({
   visibility: z.enum(["private", "shared", "unlisted", "public"]).optional(),
   title: z.string().max(200).optional(),
+  tags: z.array(z.string().min(1).max(50)).max(20).optional(),
   redactions: z
     .array(
       z.object({
