@@ -131,9 +131,27 @@ export function ContentBlockRenderer({
 
 // --- Text ---
 
+/** Strip internal agent metadata lines from text */
+function cleanText(text: string): string {
+  return text
+    .split("\n")
+    .filter((line) => {
+      const trimmed = line.trim();
+      // Strip agentId lines
+      if (trimmed.startsWith("agentId:")) return false;
+      // Strip <usage> blocks
+      if (trimmed.startsWith("<usage>") || trimmed.startsWith("</usage>")) return false;
+      if (/^(total_tokens|tool_uses|duration_ms):/.test(trimmed)) return false;
+      return true;
+    })
+    .join("\n")
+    .trim();
+}
+
 function TextBlockView({ block }: { block: TextBlock }) {
-  if (!block.text.trim()) return null;
-  return <Markdown content={block.text} />;
+  const cleaned = cleanText(block.text);
+  if (!cleaned) return null;
+  return <Markdown content={cleaned} />;
 }
 
 // --- Thinking ---
@@ -203,9 +221,10 @@ function ToolPill({
       );
     }
     if (result && open) {
+      const cleaned = cleanText(result);
       return (
         <pre className="overflow-x-auto font-mono text-[11px] leading-relaxed text-fg-ghost whitespace-pre-wrap max-h-[300px] overflow-y-auto">
-          {result}
+          {cleaned}
         </pre>
       );
     }
