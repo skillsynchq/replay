@@ -6,6 +6,7 @@ import { PageReveal } from "@/app/components/page-reveal";
 import { CopyButton } from "@/app/components/copy-button";
 import { useThreadSearch } from "@/lib/search/use-thread-search";
 import { SearchResults } from "@/app/components/search-results";
+import { AssistantSearchTrigger } from "@/app/components/assistant";
 
 interface ThreadItem {
   id: string;
@@ -60,20 +61,23 @@ export default function DashboardPage() {
         </p>
       </PageReveal>
 
-      {/* Search — only show when user has threads */}
+      {/* Search + Ask AI — only show when user has threads */}
       {hasThreads && (
         <PageReveal delay={40}>
-          <div className="mt-6 relative">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search threads..."
-              className="w-full border border-border bg-surface rounded-[4px] px-3 py-2 text-[13px] text-fg placeholder:text-fg-ghost outline-none focus:border-fg-faint transition-colors duration-150"
-            />
-            {syncing && (
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 size-3.5 border-2 border-fg-ghost/30 border-t-fg-ghost rounded-full animate-spin" />
-            )}
+          <div className="mt-6 flex items-center gap-2">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search threads..."
+                className="w-full border border-border bg-surface rounded-[4px] px-3 py-2 text-[13px] text-fg placeholder:text-fg-ghost outline-none focus:border-fg-faint transition-colors duration-150"
+              />
+              {syncing && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 size-3.5 border-2 border-fg-ghost/30 border-t-fg-ghost rounded-full animate-spin" />
+              )}
+            </div>
+            <AssistantSearchTrigger />
           </div>
         </PageReveal>
       )}

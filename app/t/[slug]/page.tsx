@@ -5,6 +5,7 @@ import { thread, message, threadShare } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { Nav } from "@/app/components/nav";
+import { Assistant } from "@/app/components/assistant";
 import { ThreadViewerClient } from "./client";
 
 export default async function ThreadPage({
@@ -108,6 +109,7 @@ export default async function ThreadPage({
           isOwner={isOwner}
         />
       </main>
+      {isOwner && <Assistant />}
     </div>
   );
 }

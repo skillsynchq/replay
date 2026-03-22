@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { Nav } from "@/app/components/nav";
+import { Assistant } from "@/app/components/assistant";
 
 export default async function AppLayout({
   children,
@@ -19,6 +20,7 @@ export default async function AppLayout({
     <div className="flex min-h-dvh flex-col">
       <Nav />
       <main className="flex-1 px-6 pt-24 pb-20">{children}</main>
+      <Assistant />
     </div>
   );
 }

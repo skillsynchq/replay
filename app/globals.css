@@ -116,3 +116,13 @@ body {
 .stagger-3 { animation-delay: 160ms; }
 .stagger-4 { animation-delay: 240ms; }
 .stagger-5 { animation-delay: 320ms; }
+
+/* Assistant sidebar slide-in */
+@keyframes assistant-slide-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}

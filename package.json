@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.80.0",
     "@neondatabase/serverless": "^1.0.2",
     "better-auth": "^1.5.5",
     "drizzle-orm": "^0.45.1",
@@ -19,6 +20,7 @@
     "react-dom": "19.2.4",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
+    "streamdown": "^2.5.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
