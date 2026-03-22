@@ -16,6 +16,7 @@ import {
   AssistantMessage,
   RedactedMessage,
 } from "@/app/components/thread-message";
+import { ParsedUserContent } from "@/app/components/xml-blocks";
 
 interface MessageData {
   id: string;
@@ -125,11 +126,11 @@ function renderMessage(
       // Only render if there's human text — tool_result blocks are
       // paired with their tool_use in the assistant message via toolResults map
       if (!text.trim()) return null;
-      return <UserMessage key={msg.id}>{text}</UserMessage>;
+      return <UserMessage key={msg.id}><ParsedUserContent text={text} /></UserMessage>;
     }
 
     if (!msg.content.trim()) return null;
-    return <UserMessage key={msg.id}>{msg.content}</UserMessage>;
+    return <UserMessage key={msg.id}><ParsedUserContent text={msg.content} /></UserMessage>;
   }
 
   // Assistant messages: render structured blocks or fall back to text
