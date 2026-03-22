@@ -51,8 +51,9 @@ export function EditableTitle({ title, slug, isOwner }: EditableTitleProps) {
         type="text"
         defaultValue={localTitle ?? ""}
         maxLength={200}
-        className="w-full bg-transparent text-center text-[clamp(21px,3vw,34px)] font-medium leading-tight text-fg border-b border-border-hover outline-none placeholder:text-fg-faint"
-        placeholder="Untitled thread"
+        aria-label="Thread title"
+        className="w-full border-b border-border-hover bg-transparent text-center text-[clamp(21px,3vw,34px)] font-medium leading-tight text-fg placeholder:text-fg-faint focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+        placeholder="Untitled thread…"
         onBlur={(e) => save(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter") save(e.currentTarget.value);
@@ -64,8 +65,9 @@ export function EditableTitle({ title, slug, isOwner }: EditableTitleProps) {
 
   return (
     <button
+      type="button"
       onClick={() => setIsEditing(true)}
-      className="group inline-flex items-center gap-2 text-left"
+      className="group inline-flex items-center gap-2 rounded-[4px] text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
     >
       <h1 className="text-[clamp(21px,3vw,34px)] font-medium leading-tight text-fg">
         {localTitle ?? "Untitled thread"}

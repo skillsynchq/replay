@@ -18,7 +18,6 @@ export function SharedUsers({ slug }: SharedUsersProps) {
   const [shares, setShares] = useState<Share[]>([]);
   const [loading, setLoading] = useState(true);
   const [inputValue, setInputValue] = useState("");
-  const [inputFocused, setInputFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -97,8 +96,10 @@ export function SharedUsers({ slug }: SharedUsersProps) {
                     @{s.username}
                   </span>
                   <button
+                    type="button"
                     onClick={() => removeUser(s.user_id)}
-                    className="text-fg-ghost opacity-0 group-hover:opacity-100 transition-opacity duration-150 hover:text-fg-muted"
+                    className="text-fg-ghost opacity-0 transition-opacity duration-150 hover:text-fg-muted group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+                    aria-label={`Remove @${s.username}`}
                   >
                     <XIcon className="size-2.5" />
                   </button>
@@ -108,25 +109,32 @@ export function SharedUsers({ slug }: SharedUsersProps) {
           )}
 
           <div className="mt-1.5 relative">
+            <label className="sr-only" htmlFor={`shared-users-${slug}`}>
+              Share this thread with a username
+            </label>
             <span className="pointer-events-none absolute left-1.5 top-1/2 -translate-y-1/2 font-mono text-[10px] text-fg-faint">
               @
             </span>
             <input
+              id={`shared-users-${slug}`}
               ref={inputRef}
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              onFocus={() => setInputFocused(true)}
-              onBlur={() => setInputFocused(false)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") addUser();
               }}
-              placeholder={shares.length === 0 ? "add username" : "add another"}
+              placeholder={shares.length === 0 ? "add username…" : "add another…"}
               disabled={adding}
-              className="w-full bg-transparent border-b border-border pl-5 pr-1 py-1 font-mono text-[11px] text-fg placeholder:text-fg-faint outline-none focus:border-fg-faint transition-colors duration-150 disabled:opacity-50"
+              autoComplete="off"
+              spellCheck={false}
+              className="w-full border-b border-border bg-transparent pl-5 pr-1 py-1 font-mono text-[11px] text-fg placeholder:text-fg-faint focus-visible:border-fg-faint focus-visible:outline-none disabled:opacity-50"
             />
           </div>
 
+          <p className="sr-only" aria-live="polite">
+            {adding ? "Sharing thread…" : error ?? ""}
+          </p>
           {error && (
             <p className="mt-1 text-[10px] text-diff-remove">{error}</p>
           )}

@@ -1,7 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useId } from "react";
+import { useRouter } from "next/navigation";
 import { GitHubMark } from "./icons";
 import { authClient } from "@/lib/auth-client";
 
@@ -10,19 +12,35 @@ interface NavClientProps {
 }
 
 export function NavClient({ user }: NavClientProps) {
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const menuListRef = useRef<HTMLDivElement>(null);
+  const menuId = useId();
 
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
+    function handleDismiss(e: MouseEvent | KeyboardEvent) {
+      if (e instanceof KeyboardEvent && e.key === "Escape") {
+        setMenuOpen(false);
+        return;
+      }
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setMenuOpen(false);
       }
     }
     if (menuOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () =>
-        document.removeEventListener("mousedown", handleClickOutside);
+      const focusFrame = requestAnimationFrame(() => {
+        menuListRef.current
+          ?.querySelector<HTMLElement>('[data-menu-item="true"]')
+          ?.focus();
+      });
+      document.addEventListener("mousedown", handleDismiss);
+      document.addEventListener("keydown", handleDismiss);
+      return () => {
+        cancelAnimationFrame(focusFrame);
+        document.removeEventListener("mousedown", handleDismiss);
+        document.removeEventListener("keydown", handleDismiss);
+      };
     }
   }, [menuOpen]);
 
@@ -74,13 +92,18 @@ export function NavClient({ user }: NavClientProps) {
               <button
                 type="button"
                 onClick={() => setMenuOpen((v) => !v)}
-                className="cursor-pointer"
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                aria-controls={menuId}
+                className="cursor-pointer rounded-[4px] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
               >
                 {user.image ? (
-                  <img
+                  <Image
                     src={user.image}
                     alt={user.name}
-                    className="size-6 rounded-[4px] border border-border transition-colors duration-150 hover:border-border-hover"
+                    width={24}
+                    height={24}
+                    className="size-6 rounded-[4px] border border-border object-cover transition-colors duration-150 hover:border-border-hover"
                   />
                 ) : (
                   <span className="flex size-6 items-center justify-center border border-border bg-surface text-[11px] font-medium text-fg-muted rounded-[4px] transition-colors duration-150 hover:border-border-hover">
@@ -90,11 +113,19 @@ export function NavClient({ user }: NavClientProps) {
               </button>
 
               {menuOpen && (
-                <div className="absolute right-0 mt-2 w-40 rounded-md border border-border bg-surface py-1 shadow-lg">
+                <div
+                  id={menuId}
+                  ref={menuListRef}
+                  role="menu"
+                  aria-label="User menu"
+                  className="absolute right-0 mt-2 w-40 rounded-md border border-border bg-surface py-1 shadow-lg"
+                >
                   <Link
                     href="/settings"
+                    role="menuitem"
+                    data-menu-item="true"
                     onClick={() => setMenuOpen(false)}
-                    className="block px-3 py-1.5 text-[13px] text-fg-muted transition-colors duration-150 hover:text-fg hover:bg-surface-raised"
+                    className="block px-3 py-1.5 text-[13px] text-fg-muted transition-colors duration-150 hover:bg-surface-raised hover:text-fg focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-inset"
                   >
                     Settings
                   </Link>
@@ -102,9 +133,12 @@ export function NavClient({ user }: NavClientProps) {
                     type="button"
                     onClick={async () => {
                       await authClient.signOut();
-                      window.location.href = "/";
+                      router.push("/");
+                      router.refresh();
                     }}
-                    className="block w-full text-left px-3 py-1.5 text-[13px] text-fg-muted transition-colors duration-150 hover:text-fg hover:bg-surface-raised cursor-pointer"
+                    role="menuitem"
+                    data-menu-item="true"
+                    className="block w-full cursor-pointer px-3 py-1.5 text-left text-[13px] text-fg-muted transition-colors duration-150 hover:bg-surface-raised hover:text-fg focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-inset"
                   >
                     Sign out
                   </button>

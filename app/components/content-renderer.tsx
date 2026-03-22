@@ -94,6 +94,20 @@ function ExpandIcon({ open }: { open: boolean }) {
   );
 }
 
+function tryFormatJson(content: string): string | null {
+  const trimmed = content.trim();
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    return JSON.stringify(parsed, null, 2);
+  } catch {
+    return null;
+  }
+}
+
 // --- Main renderer ---
 
 export function ContentBlockRenderer({
@@ -144,8 +158,9 @@ function ThinkingBlockView({ block }: { block: ThinkingBlock }) {
   return (
     <div className="border border-border rounded-[4px] overflow-hidden">
       <button
+        type="button"
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-2 bg-surface px-3 py-1.5 text-left transition-colors duration-150 hover:bg-surface-raised"
+        className="flex w-full items-center gap-2 bg-surface px-3 py-1.5 text-left transition-colors duration-150 hover:bg-surface-raised focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-inset"
       >
         <BrainIcon className="size-3 shrink-0 text-fg-faint" />
         <span className="text-[11px] italic text-fg-ghost">Thinking</span>
@@ -220,8 +235,9 @@ function ToolPill({
   return (
     <div className="border border-border rounded-[4px] overflow-hidden">
       <button
+        type="button"
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-2 bg-surface px-3 py-1.5 text-left transition-colors duration-150 hover:bg-surface-raised"
+        className="flex w-full items-center gap-2 bg-surface px-3 py-1.5 text-left transition-colors duration-150 hover:bg-surface-raised focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-inset"
       >
         {toolIcon(block.name)}
         <span className="flex-1 truncate font-mono text-[11px] text-fg-ghost">
@@ -241,21 +257,14 @@ function ToolPill({
 // --- Formatted output (detects JSON, renders nicely) ---
 
 function FormattedOutput({ content }: { content: string }) {
-  const trimmed = content.trim();
+  const formattedJson = tryFormatJson(content);
 
-  // Try to parse as JSON
-  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
-    try {
-      const parsed = JSON.parse(trimmed);
-      const formatted = JSON.stringify(parsed, null, 2);
-      return (
-        <pre className="overflow-x-auto font-mono text-[11px] leading-relaxed text-fg-ghost whitespace-pre-wrap max-h-[300px] overflow-y-auto">
-          <JsonHighlight json={formatted} />
-        </pre>
-      );
-    } catch {
-      // Not valid JSON — fall through
-    }
+  if (formattedJson) {
+    return (
+      <pre className="overflow-x-auto font-mono text-[11px] leading-relaxed text-fg-ghost whitespace-pre-wrap max-h-[300px] overflow-y-auto">
+        <JsonHighlight json={formattedJson} />
+      </pre>
+    );
   }
 
   // Plain text output

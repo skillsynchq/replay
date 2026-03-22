@@ -57,6 +57,12 @@ body {
   font-family: var(--font-sans), "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
   font-size: 13px;
   line-height: 1.6;
+  overflow-x: hidden;
+}
+
+html {
+  color-scheme: dark;
+  scroll-padding-top: 7rem;
 }
 
 /* Typography scale — golden ratio (1.618) from 13px base */
@@ -124,5 +130,23 @@ body {
   }
   to {
     transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-reveal,
+  .animate-border-pulse,
+  .search-highlight-flash {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .animate-blink {
+    animation-duration: 2s;
+  }
+
+  [style*="assistant-slide-in"] {
+    animation: none !important;
   }
 }

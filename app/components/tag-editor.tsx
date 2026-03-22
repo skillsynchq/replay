@@ -54,8 +54,10 @@ export function TagEditor({ tags, slug, isOwner }: TagEditorProps) {
             {tag}
             {isOwner && (
               <button
+                type="button"
                 onClick={() => removeTag(tag)}
-                className="text-fg-ghost transition-colors duration-150 hover:text-fg-muted"
+                className="text-fg-ghost transition-colors duration-150 hover:text-fg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+                aria-label={`Remove tag ${tag}`}
               >
                 <XIcon className="size-2.5" />
               </button>
@@ -64,17 +66,25 @@ export function TagEditor({ tags, slug, isOwner }: TagEditorProps) {
         ))}
       </div>
       {isOwner && (
-        <input
-          type="text"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") addTag(inputValue);
-          }}
-          maxLength={50}
-          placeholder="+ add tag"
-          className="mt-1.5 w-full bg-transparent border-b border-transparent text-[10px] font-mono text-fg-ghost placeholder:text-fg-faint outline-none focus:border-border-hover transition-colors duration-150"
-        />
+        <>
+          <label className="sr-only" htmlFor={`tag-editor-${slug}`}>
+            Add a tag to this thread
+          </label>
+          <input
+            id={`tag-editor-${slug}`}
+            type="text"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") addTag(inputValue);
+            }}
+            maxLength={50}
+            placeholder="+ add tag…"
+            autoComplete="off"
+            spellCheck={false}
+            className="mt-1.5 w-full border-b border-transparent bg-transparent text-[10px] font-mono text-fg-ghost placeholder:text-fg-faint focus-visible:border-border-hover focus-visible:outline-none"
+          />
+        </>
       )}
     </div>
   );

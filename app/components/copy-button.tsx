@@ -17,16 +17,22 @@ export function CopyButton({ text }: CopyButtonProps) {
   }
 
   return (
-    <button
-      onClick={handleCopy}
-      className="text-fg-ghost transition-colors duration-150 hover:text-fg-muted"
-      aria-label="Copy to clipboard"
-    >
-      {copied ? (
-        <CheckMark className="size-4 text-accent" />
-      ) : (
-        <ClipboardMark className="size-4" />
-      )}
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={handleCopy}
+        className="text-fg-ghost transition-colors duration-150 hover:text-fg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+        aria-label="Copy to clipboard"
+      >
+        {copied ? (
+          <CheckMark className="size-4 text-accent" />
+        ) : (
+          <ClipboardMark className="size-4" />
+        )}
+      </button>
+      <span className="sr-only" aria-live="polite">
+        {copied ? "Copied to clipboard." : ""}
+      </span>
+    </>
   );
 }

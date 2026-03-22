@@ -10,6 +10,7 @@ import { PageReveal } from "@/app/components/page-reveal";
 import { ContentBlockRenderer } from "@/app/components/content-renderer";
 import { Markdown } from "@/app/components/markdown";
 import { AssistantTrigger } from "@/app/components/assistant";
+import { ThreadConversation } from "@/app/components/conversation";
 import {
   UserMessage,
   AssistantMessage,
@@ -124,11 +125,11 @@ function renderMessage(
       // Only render if there's human text — tool_result blocks are
       // paired with their tool_use in the assistant message via toolResults map
       if (!text.trim()) return null;
-      return <UserMessage key={msg.id} text={text} />;
+      return <UserMessage key={msg.id}>{text}</UserMessage>;
     }
 
     if (!msg.content.trim()) return null;
-    return <UserMessage key={msg.id} text={msg.content} />;
+    return <UserMessage key={msg.id}>{msg.content}</UserMessage>;
   }
 
   // Assistant messages: render structured blocks or fall back to text
@@ -179,34 +180,45 @@ export function ThreadViewerClient({
   }, []);
 
   // Build tool_use_id → tool_result content map across all messages
-  const toolResults = new Map<string, string>();
-  for (const msg of messages) {
-    if (msg.contentBlocks) {
-      for (const block of msg.contentBlocks) {
-        if (
-          block.type === "tool_result" &&
-          typeof (block as Record<string, unknown>).tool_use_id === "string" &&
-          typeof (block as Record<string, unknown>).content === "string"
-        ) {
-          toolResults.set(
-            (block as { tool_use_id: string }).tool_use_id,
-            (block as { content: string }).content
-          );
+  const toolResults = useMemo(() => {
+    const results = new Map<string, string>();
+    for (const msg of messages) {
+      if (msg.contentBlocks) {
+        for (const block of msg.contentBlocks) {
+          if (
+            block.type === "tool_result" &&
+            typeof (block as Record<string, unknown>).tool_use_id === "string" &&
+            typeof (block as Record<string, unknown>).content === "string"
+          ) {
+            results.set(
+              (block as { tool_use_id: string }).tool_use_id,
+              (block as { content: string }).content
+            );
+          }
         }
       }
     }
-  }
+    return results;
+  }, [messages]);
 
-  // Calculate total token usage
-  const totalUsage = messages.reduce(
-    (acc, m) => {
-      if (m.usage) {
-        acc.input += m.usage.input_tokens;
-        acc.output += m.usage.output_tokens;
-      }
-      return acc;
-    },
-    { input: 0, output: 0 }
+  const totalUsage = useMemo(
+    () =>
+      messages.reduce(
+        (acc, m) => {
+          if (m.usage) {
+            acc.input += m.usage.input_tokens;
+            acc.output += m.usage.output_tokens;
+          }
+          return acc;
+        },
+        { input: 0, output: 0 }
+      ),
+    [messages]
+  );
+
+  const visibleMessages = useMemo(
+    () => messages.filter((msg) => hasVisibleContent(msg)),
+    [messages]
   );
 
   // Build context string for the AI assistant
@@ -270,18 +282,13 @@ export function ThreadViewerClient({
       <div className="mt-10 flex gap-10">
         {/* Conversation — left column */}
         <PageReveal delay={80} className="min-w-0 flex-1">
-          <div className="divide-y divide-border">
-            {messages
-              .filter((msg) => hasVisibleContent(msg))
-              .map((msg) => (
-                <div
-                  key={msg.id}
-                  data-ordinal={msg.ordinal}
-                >
-                  {renderMessage(msg, isOwner, toolResults)}
-                </div>
-              ))}
-          </div>
+          <ThreadConversation>
+            {visibleMessages.map((msg) => (
+              <div key={msg.id} data-ordinal={msg.ordinal}>
+                {renderMessage(msg, isOwner, toolResults)}
+              </div>
+            ))}
+          </ThreadConversation>
         </PageReveal>
 
         {/* Sidebar — right column */}

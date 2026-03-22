@@ -18,6 +18,10 @@ export function ScrollReveal({
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      el.style.opacity = "1";
+      return;
+    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {

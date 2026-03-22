@@ -18,6 +18,10 @@ export function PageReveal({
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      el.style.opacity = "1";
+      return;
+    }
     el.style.animationDelay = `${delay}ms`;
     el.classList.add("animate-reveal");
   }, [delay]);

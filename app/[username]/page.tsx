@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
+import Image from "next/image";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { thread } from "@/lib/db/schema";
@@ -63,10 +64,12 @@ export default async function ProfilePage({
           <PageReveal>
             <div className="flex items-center gap-4">
               {user.image && (
-                <img
+                <Image
                   src={user.image}
-                  alt=""
-                  className="size-12 rounded-[4px] border border-border"
+                  alt={`${user.name} avatar`}
+                  width={48}
+                  height={48}
+                  className="size-12 rounded-[4px] border border-border object-cover"
                 />
               )}
               <div>

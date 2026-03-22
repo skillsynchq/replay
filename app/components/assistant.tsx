@@ -12,6 +12,10 @@ import {
 import { getAllThreads } from "@/lib/search/db";
 import { search, init as initSearch } from "@/lib/search/index";
 import { ClaudeMark } from "@/app/components/icons";
+import {
+  AssistantConversation,
+  Conversation,
+} from "@/app/components/conversation";
 
 // Match the project's design system — same styles as markdown.tsx
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -49,8 +53,9 @@ export function AssistantTrigger({
 }) {
   return (
     <button
+      type="button"
       onClick={() => openAssistant(threadContext)}
-      className={`group inline-flex items-center gap-1 border border-border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider rounded-[2px] text-fg-ghost transition-colors duration-150 hover:border-border-hover hover:text-fg-muted ${className}`}
+      className={`group inline-flex items-center gap-1 rounded-[2px] border border-border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-fg-ghost transition-colors duration-150 hover:border-border-hover hover:text-fg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${className}`}
       aria-label="Open AI assistant"
     >
       <ClaudeMark className="size-2.5 opacity-50 group-hover:opacity-80 transition-opacity duration-150" />
@@ -67,8 +72,9 @@ export function AssistantSearchTrigger({
 }) {
   return (
     <button
+      type="button"
       onClick={() => openAssistant(threadContext)}
-      className="group flex items-center gap-1.5 border border-border bg-surface rounded-[4px] px-3 py-2 text-[13px] text-fg-ghost transition-all duration-150 hover:border-border-hover hover:text-fg-muted"
+      className="group flex items-center gap-1.5 rounded-[4px] border border-border bg-surface px-3 py-2 text-[13px] text-fg-ghost transition-[border-color,color] duration-150 hover:border-border-hover hover:text-fg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
       aria-label="Open AI assistant"
     >
       <ClaudeMark className="size-3.5 opacity-40 group-hover:opacity-70 transition-opacity duration-150" />
@@ -87,6 +93,9 @@ export function Assistant() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const lastActiveRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     setMessages(loadMessages());
@@ -113,19 +122,73 @@ export function Assistant() {
   }, [messages]);
 
   useEffect(() => {
-    if (open) {
-      setTimeout(() => inputRef.current?.focus(), 100);
-    }
-  }, [open]);
+    if (!open) return;
 
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape" && open) {
-        setOpen(false);
+    lastActiveRef.current = document.activeElement as HTMLElement | null;
+    const overlay = overlayRef.current;
+    const dialog = dialogRef.current;
+    const parent = overlay?.parentElement;
+    const inertSiblings: HTMLElement[] = [];
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    if (parent && overlay) {
+      for (const child of Array.from(parent.children)) {
+        if (child === overlay || !(child instanceof HTMLElement)) continue;
+        child.inert = true;
+        child.setAttribute("aria-hidden", "true");
+        inertSiblings.push(child);
       }
     }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+
+    const focusFrame = requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setOpen(false);
+        return;
+      }
+
+      if (event.key !== "Tab" || !dialog) return;
+      const focusable = Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      );
+
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    dialog?.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      cancelAnimationFrame(focusFrame);
+      dialog?.removeEventListener("keydown", onKeyDown);
+      for (const sibling of inertSiblings) {
+        sibling.inert = false;
+        sibling.removeAttribute("aria-hidden");
+      }
+      document.body.style.overflow = previousOverflow;
+      lastActiveRef.current?.focus();
+    };
   }, [open]);
 
   const buildContext = useCallback(
@@ -282,24 +345,30 @@ export function Assistant() {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex">
+    <div ref={overlayRef} className="fixed inset-0 z-50 flex">
       {/* Backdrop */}
       <div
         className="flex-1 bg-black/30 backdrop-blur-sm"
         onClick={() => setOpen(false)}
+        aria-hidden="true"
       />
 
       {/* Sidebar */}
       <div
-        className="flex h-full w-full max-w-[440px] flex-col border-l border-border bg-bg"
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="assistant-title"
+        className="flex h-full w-full max-w-[440px] flex-col overscroll-contain border-l border-border bg-bg"
         style={{ animation: "assistant-slide-in 200ms ease-out" }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 h-12 border-b border-border shrink-0">
           <div className="flex items-center gap-2.5">
             <button
+              type="button"
               onClick={() => setOpen(false)}
-              className="text-fg-ghost hover:text-fg-muted transition-colors"
+              className="text-fg-ghost transition-colors hover:text-fg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
               aria-label="Close"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -307,11 +376,14 @@ export function Assistant() {
                 <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
             </button>
-            <span className="text-[13px] text-fg-muted">Assistant</span>
+            <span id="assistant-title" className="text-[13px] text-fg-muted">
+              Assistant
+            </span>
           </div>
           <button
+            type="button"
             onClick={handleNewChat}
-            className="text-fg-ghost hover:text-fg-muted transition-colors"
+            className="text-fg-ghost transition-colors hover:text-fg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
             aria-label="New chat"
             title="New chat"
           >
@@ -323,48 +395,55 @@ export function Assistant() {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-3">
-          {messages.length === 0 && (
-            <div className="text-fg-ghost text-[12px] text-center py-16">
-              Ask anything about your conversations.
-            </div>
-          )}
-          {messages.map((msg, i) => (
-            <div
-              key={i}
-              className={`py-3 ${i > 0 ? "border-t border-border" : ""}`}
-            >
-              {msg.role === "user" ? (
-                <div className="flex gap-2">
-                  <span className="select-none font-mono text-[13px] text-fg-ghost">{">"}</span>
-                  <p className="text-[13px] font-medium leading-relaxed text-fg whitespace-pre-wrap">{msg.content}</p>
+        <AssistantConversation
+          empty="Ask anything about your conversations."
+          hasMessages={messages.length > 0}
+          className="relative"
+        >
+          <div aria-live="polite" className="sr-only">
+            {streaming ? "Assistant response in progress…" : ""}
+          </div>
+          {messages.length > 0 ? (
+            <Conversation.Messages aria-live="polite">
+              {messages.map((msg, i) => (
+                <div key={`${msg.role}-${i}`}>
+                  {msg.role === "user" ? (
+                    <Conversation.UserMessage>{msg.content}</Conversation.UserMessage>
+                  ) : (
+                    <Conversation.AssistantMessage>
+                      <Streamdown
+                        components={sdComponents}
+                        mode={
+                          streaming && i === messages.length - 1
+                            ? "streaming"
+                            : "static"
+                        }
+                        animated={
+                          streaming && i === messages.length - 1
+                            ? {
+                                sep: "word",
+                                duration: 80,
+                                stagger: 15,
+                                animation: "sd-fadeIn",
+                              }
+                            : false
+                        }
+                        caret={
+                          streaming && i === messages.length - 1
+                            ? "block"
+                            : undefined
+                        }
+                      >
+                        {msg.content}
+                      </Streamdown>
+                    </Conversation.AssistantMessage>
+                  )}
                 </div>
-              ) : (
-                <Streamdown
-                  components={sdComponents}
-                  mode={
-                    streaming && i === messages.length - 1
-                      ? "streaming"
-                      : "static"
-                  }
-                  animated={
-                    streaming && i === messages.length - 1
-                      ? { sep: "word", duration: 80, stagger: 15, animation: "sd-fadeIn" }
-                      : false
-                  }
-                  caret={
-                    streaming && i === messages.length - 1
-                      ? "block"
-                      : undefined
-                  }
-                >
-                  {msg.content}
-                </Streamdown>
-              )}
-            </div>
-          ))}
+              ))}
+            </Conversation.Messages>
+          ) : null}
           <div ref={messagesEndRef} />
-        </div>
+        </AssistantConversation>
 
         {/* Input */}
         <form
@@ -374,19 +453,24 @@ export function Assistant() {
           }}
           className="flex items-center gap-2 px-4 h-12 border-t border-border shrink-0"
         >
+          <label className="sr-only" htmlFor="assistant-input">
+            Ask the assistant a question
+          </label>
           <input
+            id="assistant-input"
             ref={inputRef}
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask a question..."
+            placeholder="Ask a question…"
             disabled={streaming}
-            className="flex-1 bg-transparent text-fg text-[13px] placeholder:text-fg-ghost outline-none disabled:opacity-50"
+            autoComplete="off"
+            className="flex-1 bg-transparent text-fg text-[13px] placeholder:text-fg-ghost focus-visible:outline-none disabled:opacity-50"
           />
           <button
             type="submit"
             disabled={streaming || !input.trim()}
-            className="text-fg-ghost hover:text-accent disabled:opacity-30 transition-colors"
+            className="text-fg-ghost transition-colors hover:text-accent disabled:opacity-30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
             aria-label="Send"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

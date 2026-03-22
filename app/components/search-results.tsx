@@ -21,7 +21,7 @@ function highlightMatch(text: string, query: string) {
   const parts = text.split(regex);
 
   return parts.map((part, i) =>
-    regex.test(part) ? (
+    i % 2 === 1 ? (
       <mark
         key={i}
         className="bg-accent/20 text-accent rounded-[2px] px-[2px] mx-[-2px]"
@@ -53,7 +53,7 @@ export function SearchResults({ results, query }: SearchResultsProps) {
           {/* Thread header */}
           <Link
             href={`/t/${group.slug}`}
-            className="flex items-center gap-2 px-4 py-2.5 bg-surface-raised hover:bg-surface-raised/80 transition-colors duration-150 border-b border-border"
+            className="flex items-center gap-2 border-b border-border bg-surface-raised px-4 py-2.5 transition-colors duration-150 hover:bg-surface-raised/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-inset"
           >
             <span className="text-[13px] font-medium text-fg truncate">
               {group.title ?? "Untitled thread"}
@@ -70,7 +70,7 @@ export function SearchResults({ results, query }: SearchResultsProps) {
               <Link
                 key={match.ordinal}
                 href={`/t/${group.slug}#m${match.ordinal}`}
-                className="flex gap-3 px-4 py-2 hover:bg-surface-raised/40 transition-colors duration-150 group"
+                className="group flex gap-3 px-4 py-2 transition-colors duration-150 hover:bg-surface-raised/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-inset"
               >
                 <span className="shrink-0 font-mono text-[10px] text-fg-faint mt-[3px] w-14 text-right">
                   {match.role === "user" ? "you" : "agent"}
@@ -83,7 +83,7 @@ export function SearchResults({ results, query }: SearchResultsProps) {
             {group.matches.length > 5 && (
               <Link
                 href={`/t/${group.slug}`}
-                className="block px-4 py-1.5 text-[11px] text-fg-ghost hover:text-fg-muted transition-colors duration-150"
+                className="block px-4 py-1.5 text-[11px] text-fg-ghost transition-colors duration-150 hover:text-fg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-inset"
               >
                 +{group.matches.length - 5} more{" "}
                 {group.matches.length - 5 === 1 ? "match" : "matches"}

@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  startTransition,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   init,
   sync,
@@ -10,8 +17,6 @@ import {
 } from "./index";
 
 interface UseThreadSearch {
-  query: string;
-  setQuery: (q: string) => void;
   /** Search results grouped by thread, each with matching message snippets */
   results: GroupedSearchResult[];
   syncing: boolean;
@@ -20,24 +25,25 @@ interface UseThreadSearch {
   resync: () => Promise<void>;
 }
 
-export function useThreadSearch(): UseThreadSearch {
-  const [query, setQuery] = useState("");
+export function useThreadSearch(query: string): UseThreadSearch {
   const [results, setResults] = useState<GroupedSearchResult[]>([]);
   const [syncing, setSyncing] = useState(true);
   const [totalIndexed, setTotalIndexed] = useState(0);
+  const [ready, setReady] = useState(false);
   const initialized = useRef(false);
+  const deferredQuery = useDeferredValue(query);
 
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
 
     (async () => {
-      setSyncing(true);
       try {
         await init();
         setTotalIndexed(indexedCount());
         await sync();
         setTotalIndexed(indexedCount());
+        setReady(true);
       } catch (err) {
         console.error("[search] sync error:", err);
       } finally {
@@ -47,13 +53,14 @@ export function useThreadSearch(): UseThreadSearch {
   }, []);
 
   useEffect(() => {
-    if (!query.trim()) {
+    if (!ready || !deferredQuery.trim()) {
       setResults([]);
       return;
     }
-    const r = searchIndex(query);
-    setResults(r);
-  }, [query]);
+    startTransition(() => {
+      setResults(searchIndex(deferredQuery));
+    });
+  }, [deferredQuery, ready]);
 
   const resync = useCallback(async () => {
     setSyncing(true);
@@ -61,7 +68,9 @@ export function useThreadSearch(): UseThreadSearch {
       await sync();
       setTotalIndexed(indexedCount());
       if (query.trim()) {
-        setResults(searchIndex(query));
+        startTransition(() => {
+          setResults(searchIndex(query));
+        });
       }
     } catch (err) {
       console.error("[search] resync error:", err);
@@ -71,8 +80,6 @@ export function useThreadSearch(): UseThreadSearch {
   }, [query]);
 
   return {
-    query,
-    setQuery,
     results,
     syncing,
     isSearching: query.trim().length > 0,

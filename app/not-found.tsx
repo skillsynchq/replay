@@ -1,48 +1,25 @@
 import Link from "next/link";
+import { BrainIcon } from "./components/icons";
+import { Conversation, PreviewConversation } from "./components/conversation";
 
 export default function NotFound() {
   return (
     <div className="flex min-h-screen items-center justify-center px-6">
       <div className="w-full max-w-2xl">
-        <div className="divide-y divide-border">
-          {/* User message */}
-          <div className="py-4">
-            <div className="flex gap-2">
-              <span className="select-none font-mono text-[13px] text-fg-ghost">
-                {">"}
-              </span>
-              <p className="text-[13px] font-medium text-fg whitespace-pre-wrap">
-                show me what&apos;s at this URL
-              </p>
-            </div>
-          </div>
+        <PreviewConversation className="border-none hover:border-border">
+          <Conversation.UserMessage>
+            show me what&apos;s at this URL
+          </Conversation.UserMessage>
 
-          {/* Assistant thinking */}
-          <div className="py-4">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-surface rounded-[4px] w-fit">
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="text-fg-ghost"
-              >
-                <path d="M12 2a8 8 0 0 0-8 8c0 3.4 2.1 6.3 5 7.4V19a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1.6c2.9-1.1 5-4 5-7.4a8 8 0 0 0-8-8z" />
-                <line x1="9" y1="22" x2="15" y2="22" />
-              </svg>
-              <span className="font-mono text-[11px] text-fg-faint">
-                looked everywhere, checked twice...
-              </span>
-            </div>
-          </div>
+          <Conversation.AssistantMessage>
+            <Conversation.ToolRow
+              icon={<BrainIcon className="size-3 text-fg-ghost" />}
+              label="looked everywhere, checked twice…"
+              className="mb-0 w-fit rounded-[4px] bg-surface px-3 py-1.5"
+            />
+          </Conversation.AssistantMessage>
 
-          {/* Assistant response */}
-          <div className="py-4">
-            <div className="flex items-start justify-between gap-4">
+          <Conversation.AssistantMessage timestamp="404">
               <div className="min-w-0 flex-1 space-y-2">
                 <p className="text-[13px] leading-relaxed text-fg">
                   Nothing here. This page doesn&apos;t exist — it may have been
@@ -78,12 +55,8 @@ export default function NotFound() {
                   </li>
                 </ul>
               </div>
-              <span className="shrink-0 font-mono text-[11px] text-fg-faint">
-                404
-              </span>
-            </div>
-          </div>
-        </div>
+          </Conversation.AssistantMessage>
+        </PreviewConversation>
       </div>
     </div>
   );

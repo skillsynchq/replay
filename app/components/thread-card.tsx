@@ -47,7 +47,7 @@ export function ThreadCard({
   return (
     <Link
       href={`/t/${slug}`}
-      className="group block border border-border px-5 py-4 transition-colors duration-150 hover:border-border-hover rounded-[4px]"
+      className="group block rounded-[4px] border border-border px-5 py-4 transition-colors duration-150 hover:border-border-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
