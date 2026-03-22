@@ -11,7 +11,7 @@ import {
 } from "@/lib/assistant/store";
 import { getAllThreads } from "@/lib/search/db";
 import { search, init as initSearch } from "@/lib/search/index";
-import { ClaudeMark } from "@/app/components/icons";
+import { LightningMark } from "@/app/components/icons";
 import {
   AssistantConversation,
   Conversation,
@@ -58,7 +58,7 @@ export function AssistantTrigger({
       className={`group inline-flex items-center gap-1 rounded-[2px] border border-border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-fg-ghost transition-colors duration-150 hover:border-border-hover hover:text-fg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${className}`}
       aria-label="Open AI assistant"
     >
-      <ClaudeMark className="size-2.5 opacity-50 group-hover:opacity-80 transition-opacity duration-150" />
+      <LightningMark className="size-2.5 opacity-50 group-hover:opacity-80 transition-opacity duration-150" />
       <span>AI</span>
     </button>
   );
@@ -77,7 +77,7 @@ export function AssistantSearchTrigger({
       className="group flex items-center gap-1.5 rounded-[4px] border border-border bg-surface px-3 py-2 text-[13px] text-fg-ghost transition-[border-color,color] duration-150 hover:border-border-hover hover:text-fg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
       aria-label="Open AI assistant"
     >
-      <ClaudeMark className="size-3.5 opacity-40 group-hover:opacity-70 transition-opacity duration-150" />
+      <LightningMark className="size-3.5 opacity-40 group-hover:opacity-70 transition-opacity duration-150" />
       <span className="text-[12px]">AI</span>
     </button>
   );

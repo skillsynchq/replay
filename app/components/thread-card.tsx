@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ClaudeMark } from "./icons";
+import { AgentMark } from "./icons";
 import { VisibilityBadge } from "./visibility-badge";
 
 interface ThreadCardProps {
@@ -56,7 +56,7 @@ export function ThreadCard({
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
             <span className="flex items-center gap-1 text-[12px] text-fg-ghost">
-              <ClaudeMark className="size-3 text-fg-faint" />
+              <AgentMark agent={agent} className="size-3 text-fg-faint" />
               {agentLabel(agent)}
             </span>
             {model && (

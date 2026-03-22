@@ -111,6 +111,16 @@ html {
   100% { border-left-color: transparent; background-color: transparent; }
 }
 
+.thread-fragment-target {
+  border-left: 2px solid transparent;
+  scroll-margin-top: 7rem;
+}
+
+.thread-fragment-target:target {
+  border-left-color: var(--accent);
+  background-color: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
 .search-highlight-flash {
   border-left: 2px solid transparent;
   animation: highlight-flash 3s ease-out both;

@@ -1,5 +1,5 @@
 import { ScrollReveal } from "./scroll-reveal";
-import { ClaudeMark } from "./icons";
+import { ClaudeMark, OpenAIMark } from "./icons";
 
 interface Step {
   number: string;
@@ -51,7 +51,8 @@ export function HowItWorks() {
                   {step.description}
                   {step.showLogos && (
                     <span className="ml-1.5 inline-flex items-center gap-1.5 align-middle">
-                      <ClaudeMark className="inline size-3.5 text-fg-ghost" />
+                      <ClaudeMark className="size-3.5 text-fg-ghost" />
+                      <OpenAIMark className="size-3.5 text-fg-ghost" />
                     </span>
                   )}
                 </p>

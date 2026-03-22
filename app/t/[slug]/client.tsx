@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useMemo } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
-import { ClaudeMark } from "@/app/components/icons";
+import { AgentMark } from "@/app/components/icons";
 import { VisibilitySelector } from "@/app/components/visibility-selector";
 import { EditableTitle } from "@/app/components/editable-title";
 import { TagEditor } from "@/app/components/tag-editor";
@@ -154,31 +154,6 @@ export function ThreadViewerClient({
   promptCount,
   isOwner,
 }: ThreadViewerProps) {
-  const scrolledRef = useRef(false);
-
-  // Read target ordinal from hash (e.g. #m42) and scroll to it
-  useEffect(() => {
-    if (scrolledRef.current) return;
-    const hash = window.location.hash;
-    const match = hash.match(/^#m(\d+)$/);
-    if (!match) return;
-    scrolledRef.current = true;
-    const ordinal = Number(match[1]);
-
-    const timer = setTimeout(() => {
-      const el = document.querySelector(
-        `[data-ordinal="${ordinal}"]`
-      );
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        el.classList.add("search-highlight-flash");
-      }
-      // Clean up the hash so it doesn't persist on refresh
-      history.replaceState(null, "", window.location.pathname);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, []);
-
   // Build tool_use_id → tool_result content map across all messages
   const toolResults = useMemo(() => {
     const results = new Map<string, string>();
@@ -284,7 +259,12 @@ export function ThreadViewerClient({
         <PageReveal delay={80} className="min-w-0 flex-1">
           <ThreadConversation>
             {visibleMessages.map((msg) => (
-              <div key={msg.id} data-ordinal={msg.ordinal}>
+              <div
+                key={msg.id}
+                id={`m${msg.ordinal}`}
+                data-ordinal={msg.ordinal}
+                className="thread-fragment-target"
+              >
                 {renderMessage(msg, isOwner, toolResults)}
               </div>
             ))}
@@ -330,7 +310,10 @@ export function ThreadViewerClient({
 
               <SidebarItem label="Agent">
                 <span className="flex items-center gap-1">
-                  <ClaudeMark className="size-3.5 text-fg-subtle" />
+                  <AgentMark
+                    agent={thread.agent}
+                    className="size-3.5 text-fg-subtle"
+                  />
                   {agentLabel(thread.agent)}
                 </span>
               </SidebarItem>
