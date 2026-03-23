@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse, after } from "next/server";
 import { eq, and, asc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { thread, message, threadShare } from "@/lib/db/schema";
@@ -9,6 +9,7 @@ import {
   extractTextFromBlocks,
   type ContentBlock,
 } from "@/lib/validations";
+import { summarizeThread } from "@/lib/ai/summarize-thread";
 
 async function findThread(slug: string) {
   const rows = await db
@@ -87,6 +88,8 @@ export async function GET(
       projectPath: threadRow.projectPath,
       gitBranch: threadRow.gitBranch,
       cliVersion: threadRow.cliVersion,
+      keyPoints: threadRow.keyPoints,
+      conciseTitle: threadRow.conciseTitle,
       messageCount: threadRow.messageCount,
       sessionTs: threadRow.sessionTs,
       createdAt: threadRow.createdAt,
@@ -262,6 +265,38 @@ export async function PUT(
       })
     );
   }
+
+  // Regenerate key points and concise title in the background
+  after(async () => {
+    try {
+      const textMessages = msgs.map((m) => ({
+        role: m.role,
+        content:
+          "content" in m && m.content
+            ? extractTextFromBlocks(m.content as ContentBlock[])
+            : "text" in m
+              ? (m.text ?? "")
+              : "",
+      }));
+
+      const { keyPoints, conciseTitle } = await summarizeThread(
+        title,
+        textMessages
+      );
+
+      const updates: Partial<typeof thread.$inferInsert> = {
+        keyPoints: keyPoints.length > 0 ? keyPoints : null,
+        conciseTitle: conciseTitle ?? null,
+      };
+
+      await db
+        .update(thread)
+        .set(updates)
+        .where(eq(thread.id, threadRow.id));
+    } catch {
+      // Silent failure — key points are non-critical
+    }
+  });
 
   return NextResponse.json({
     id: threadRow.id,

@@ -85,6 +85,8 @@ export async function GET(request: NextRequest) {
       model: thread.model,
       visibility: thread.visibility,
       tags: thread.tags,
+      keyPoints: thread.keyPoints,
+      conciseTitle: thread.conciseTitle,
       messageCount: thread.messageCount,
       sessionTs: thread.sessionTs,
       createdAt: thread.createdAt,

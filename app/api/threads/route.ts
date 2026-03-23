@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse, after } from "next/server";
 import { nanoid } from "nanoid";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -9,6 +9,7 @@ import {
   extractTextFromBlocks,
   type ContentBlock,
 } from "@/lib/validations";
+import { summarizeThread } from "@/lib/ai/summarize-thread";
 
 /**
  * POST /api/threads — Upload a thread from the CLI
@@ -128,6 +129,39 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Generate key points and concise title in the background
+  after(async () => {
+    try {
+      const textMessages = messages.map((m) => ({
+        role: m.role,
+        content:
+          "content" in m && m.content
+            ? extractTextFromBlocks(m.content as ContentBlock[])
+            : "text" in m
+              ? (m.text ?? "")
+              : "",
+      }));
+
+      const { keyPoints, conciseTitle } = await summarizeThread(
+        title,
+        textMessages
+      );
+
+      const updates: Partial<typeof thread.$inferInsert> = {};
+      if (keyPoints.length > 0) updates.keyPoints = keyPoints;
+      if (conciseTitle) updates.conciseTitle = conciseTitle;
+
+      if (Object.keys(updates).length > 0) {
+        await db
+          .update(thread)
+          .set(updates)
+          .where(eq(thread.id, inserted.id));
+      }
+    } catch {
+      // Silent failure — key points are non-critical
+    }
+  });
+
   return NextResponse.json(
     {
       id: inserted.id,
@@ -175,6 +209,8 @@ export async function GET(request: NextRequest) {
         agent: thread.agent,
         model: thread.model,
         visibility: thread.visibility,
+        keyPoints: thread.keyPoints,
+        conciseTitle: thread.conciseTitle,
         messageCount: thread.messageCount,
         sessionTs: thread.sessionTs,
         createdAt: thread.createdAt,

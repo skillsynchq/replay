@@ -18,6 +18,8 @@ interface ThreadItem {
   id: string;
   slug: string;
   title: string | null;
+  conciseTitle?: string | null;
+  keyPoints?: string[] | null;
   agent: string;
   model: string | null;
   messageCount: number;
@@ -151,6 +153,8 @@ export function ProfileThreads({
                 key={t.id}
                 slug={t.slug}
                 title={t.title}
+                conciseTitle={t.conciseTitle}
+                keyPoints={t.keyPoints}
                 agent={t.agent}
                 model={t.model}
                 messageCount={t.messageCount}

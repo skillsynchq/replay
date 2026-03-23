@@ -28,6 +28,8 @@ export const thread = pgTable(
     sessionTs: timestamp("session_ts", { withTimezone: true }).notNull(),
     cliVersion: text("cli_version"),
     tags: text("tags").array().notNull().default(sql`'{}'::text[]`),
+    keyPoints: text("key_points").array(),
+    conciseTitle: text("concise_title"),
     messageCount: integer("message_count").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

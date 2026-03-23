@@ -36,6 +36,8 @@ export default async function DashboardPage({
         id: thread.id,
         slug: thread.slug,
         title: thread.title,
+        conciseTitle: thread.conciseTitle,
+        keyPoints: thread.keyPoints,
         agent: thread.agent,
         model: thread.model,
         visibility: thread.visibility,
