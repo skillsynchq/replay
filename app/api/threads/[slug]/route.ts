@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse, after } from "next/server";
 import { eq, and, asc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { thread, message, threadShare } from "@/lib/db/schema";
-import { requireAuth, getOptionalSession, isCliRequest } from "@/lib/auth-helpers";
+import { requireAuth, getOptionalSession, isCliRequest, checkCliVersion } from "@/lib/auth-helpers";
 import {
   updateThreadSchema,
   uploadThreadSchema,
@@ -179,6 +179,9 @@ export async function PUT(
       { status: 403 }
     );
   }
+
+  const versionError = checkCliVersion(request);
+  if (versionError) return versionError;
 
   const { slug } = await params;
   const [session, authError] = await requireAuth(request);

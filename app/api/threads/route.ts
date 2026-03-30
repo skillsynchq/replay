@@ -3,7 +3,7 @@ import { nanoid } from "nanoid";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { thread, message } from "@/lib/db/schema";
-import { requireAuth, isCliRequest } from "@/lib/auth-helpers";
+import { requireAuth, isCliRequest, checkCliVersion } from "@/lib/auth-helpers";
 import {
   uploadThreadSchema,
   extractTextFromBlocks,
@@ -21,6 +21,9 @@ export async function POST(request: NextRequest) {
       { status: 403 }
     );
   }
+
+  const versionError = checkCliVersion(request);
+  if (versionError) return versionError;
 
   const [session, authError] = await requireAuth(request);
   if (authError) return authError;
