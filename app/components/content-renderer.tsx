@@ -33,10 +33,16 @@ interface ToolUseBlock {
 interface ToolResultBlock {
   type: "tool_result";
   tool_use_id: string;
-  content: string;
+  content: string | Array<{ type: string; text?: string; source?: { type: string; media_type: string; data: string } }>;
+  is_error?: boolean;
 }
 
-type ContentBlock = TextBlock | ThinkingBlock | ToolUseBlock | ToolResultBlock;
+interface ImageBlock {
+  type: "image";
+  source: { type: string; media_type: string; data: string };
+}
+
+type ContentBlock = TextBlock | ThinkingBlock | ToolUseBlock | ToolResultBlock | ImageBlock;
 
 // --- Helpers ---
 
@@ -135,6 +141,15 @@ export function ContentBlockRenderer({
             );
           case "tool_result":
             return null;
+          case "image":
+            return (
+              <img
+                key={i}
+                src={`data:${block.source.media_type};base64,${block.source.data}`}
+                alt="Attached image"
+                className="max-w-full rounded-[4px] border border-border"
+              />
+            );
           default:
             return null;
         }

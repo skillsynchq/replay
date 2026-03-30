@@ -118,15 +118,37 @@ function renderMessage(
 
   if (msg.role === "user") {
     if (msg.contentBlocks) {
-      const textBlocks = msg.contentBlocks.filter((b) => b.type === "text");
+      const imageBlocks = msg.contentBlocks.filter((b) => b.type === "image");
+      const hasImages = imageBlocks.length > 0;
+      const textBlocks = msg.contentBlocks.filter((b) => {
+        if (b.type !== "text") return false;
+        // When images are present, skip the redundant "[Image: source: ...]" reference text
+        if (hasImages && (b as { text: string }).text.match(/^\[Image.*source:/)) return false;
+        return true;
+      });
       const text = textBlocks
         .map((b) => (b as { type: "text"; text: string }).text)
         .join("\n");
 
-      // Only render if there's human text — tool_result blocks are
+      // Only render if there's human text or images — tool_result blocks are
       // paired with their tool_use in the assistant message via toolResults map
-      if (!text.trim()) return null;
-      return <UserMessage key={msg.id}><ParsedUserContent text={text} /></UserMessage>;
+      if (!text.trim() && imageBlocks.length === 0) return null;
+      return (
+        <UserMessage key={msg.id}>
+          {text.trim() && <ParsedUserContent text={text} />}
+          {imageBlocks.map((b, i) => {
+            const src = (b as { type: "image"; source: { media_type: string; data: string } }).source;
+            return (
+              <img
+                key={i}
+                src={`data:${src.media_type};base64,${src.data}`}
+                alt="Attached image"
+                className="max-w-full rounded-[4px] border border-border mt-2"
+              />
+            );
+          })}
+        </UserMessage>
+      );
     }
 
     if (!msg.content.trim()) return null;
@@ -163,12 +185,23 @@ export function ThreadViewerClient({
         for (const block of msg.contentBlocks) {
           if (
             block.type === "tool_result" &&
-            typeof (block as Record<string, unknown>).tool_use_id === "string" &&
-            typeof (block as Record<string, unknown>).content === "string"
+            typeof (block as Record<string, unknown>).tool_use_id === "string"
           ) {
+            const raw = (block as Record<string, unknown>).content;
+            let text: string;
+            if (typeof raw === "string") {
+              text = raw;
+            } else if (Array.isArray(raw)) {
+              text = (raw as Array<Record<string, unknown>>)
+                .filter((item) => item.type === "text" && typeof item.text === "string")
+                .map((item) => item.text as string)
+                .join("\n");
+            } else {
+              continue;
+            }
             results.set(
               (block as { tool_use_id: string }).tool_use_id,
-              (block as { content: string }).content
+              text
             );
           }
         }

@@ -19,10 +19,35 @@ const toolUseBlockSchema = z.object({
   input: z.record(z.string(), z.unknown()),
 });
 
+const toolResultContentItemSchema = z.union([
+  z.object({ type: z.literal("text"), text: z.string() }),
+  z.object({
+    type: z.literal("image"),
+    source: z.object({
+      type: z.string(),
+      media_type: z.string(),
+      data: z.string(),
+    }),
+  }),
+  // Catch-all for unknown sub-block types (e.g. tool_reference)
+  z.object({ type: z.string() }).passthrough(),
+]);
+
 const toolResultBlockSchema = z.object({
   type: z.literal("tool_result"),
   tool_use_id: z.string(),
-  content: z.string(),
+  // Accept string (legacy) or array of text/image sub-blocks
+  content: z.union([z.string(), z.array(toolResultContentItemSchema)]),
+  is_error: z.boolean().optional(),
+});
+
+const imageBlockSchema = z.object({
+  type: z.literal("image"),
+  source: z.object({
+    type: z.string(),
+    media_type: z.string(),
+    data: z.string(),
+  }),
 });
 
 export const contentBlockSchema = z.union([
@@ -30,6 +55,9 @@ export const contentBlockSchema = z.union([
   thinkingBlockSchema,
   toolUseBlockSchema,
   toolResultBlockSchema,
+  imageBlockSchema,
+  // Catch-all for unknown block types — preserves data without validation errors
+  z.object({ type: z.string() }).passthrough(),
 ]);
 
 export type ContentBlock = z.infer<typeof contentBlockSchema>;
@@ -119,8 +147,22 @@ export const usernameSchema = z
  * Extract plain text from content blocks for preview/search purposes.
  */
 export function extractTextFromBlocks(blocks: ContentBlock[]): string {
-  return blocks
-    .filter((b): b is z.infer<typeof textBlockSchema> => b.type === "text")
-    .map((b) => b.text)
-    .join("\n");
+  const parts: string[] = [];
+  for (const b of blocks) {
+    if (b.type === "text" && "text" in b) {
+      parts.push(b.text as string);
+    } else if (b.type === "tool_result" && "content" in b) {
+      const content = b.content;
+      if (typeof content === "string") {
+        parts.push(content);
+      } else if (Array.isArray(content)) {
+        for (const item of content) {
+          if (item.type === "text" && "text" in item) {
+            parts.push(item.text as string);
+          }
+        }
+      }
+    }
+  }
+  return parts.join("\n");
 }

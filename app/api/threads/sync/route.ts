@@ -30,9 +30,17 @@ function buildSearchableContent(
           parts.push(v);
         }
       }
-    } else if (b.type === "tool_result" && typeof b.content === "string") {
+    } else if (b.type === "tool_result") {
       // Truncate tool results to keep index size reasonable
-      parts.push(b.content.slice(0, 500));
+      if (typeof b.content === "string") {
+        parts.push(b.content.slice(0, 500));
+      } else if (Array.isArray(b.content)) {
+        for (const item of b.content as Array<Record<string, unknown>>) {
+          if (item.type === "text" && typeof item.text === "string") {
+            parts.push((item.text as string).slice(0, 500));
+          }
+        }
+      }
     }
   }
 
