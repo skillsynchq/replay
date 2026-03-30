@@ -57,6 +57,8 @@ interface ThreadViewerProps {
   isOwner: boolean;
 }
 
+const MESSAGE_HASH_PATTERN = /^#m(\d+)(?:-m(\d+))?$/;
+
 function agentLabel(agent: string): string {
   if (agent === "claude") return "Claude Code";
   if (agent === "codex") return "Codex";
@@ -103,7 +105,34 @@ function SidebarItem({
  * Check if a message has any renderable content.
  */
 function hasVisibleContent(msg: MessageData): boolean {
-  if (msg.contentBlocks && msg.contentBlocks.length > 0) return true;
+  if (msg.redacted) return true;
+
+  if (msg.contentBlocks && msg.contentBlocks.length > 0) {
+    if (msg.role === "user") {
+      const imageBlocks = msg.contentBlocks.filter((b) => b.type === "image");
+      const hasImages = imageBlocks.length > 0;
+      const text = msg.contentBlocks
+        .filter((b) => {
+          if (b.type !== "text") return false;
+          if (
+            hasImages &&
+            typeof (b as { text?: string }).text === "string" &&
+            (b as { text: string }).text.match(/^\[Image.*source:/)
+          ) {
+            return false;
+          }
+          return true;
+        })
+        .map((b) => (b as { text?: string }).text ?? "")
+        .join("\n")
+        .trim();
+
+      return hasImages || text.length > 0;
+    }
+
+    return firstRenderableBlock(msg) !== null;
+  }
+
   return msg.content.trim().length > 0;
 }
 
@@ -145,6 +174,23 @@ function lineNumberOffsetClass(msg: MessageData): string {
   const firstBlock = firstRenderableBlock(msg);
   if (!firstBlock || firstBlock.type === "text") return "pt-[14px]";
   return "pt-4";
+}
+
+function parseMessageHashRange(
+  hash: string
+): { start: number; end: number } | null {
+  const match = hash.match(MESSAGE_HASH_PATTERN);
+  if (!match) return null;
+
+  const start = parseInt(match[1], 10);
+  const end = match[2] ? parseInt(match[2], 10) : start;
+
+  return { start, end };
+}
+
+function buildMessageHash(start: number, end: number): string {
+  if (start === end) return `#m${start}`;
+  return `#m${start}-m${end}`;
 }
 
 function renderMessage(
@@ -301,10 +347,9 @@ export function ThreadViewerClient({
   // Parse hash like #m3 or #m3-m7 into a set of highlighted ordinals
   const parseHash = useCallback((hash: string): Set<number> => {
     const set = new Set<number>();
-    const match = hash.match(/^#m(\d+)(?:-m(\d+))?$/);
-    if (!match) return set;
-    const start = parseInt(match[1], 10);
-    const end = match[2] ? parseInt(match[2], 10) : start;
+    const range = parseMessageHashRange(hash);
+    if (!range) return set;
+    const { start, end } = range;
     const lo = Math.min(start, end);
     const hi = Math.max(start, end);
     for (let i = lo; i <= hi; i++) set.add(i);
@@ -399,16 +444,22 @@ export function ThreadViewerClient({
                 >
                   <a
                     href={`#m${msg.ordinal}`}
-                    className={`thread-fragment-link hidden items-start justify-end text-right font-mono text-[11px] leading-none transition-opacity select-none lg:flex ${lineNumberOffsetClass(msg)} ${isHighlighted ? "text-accent opacity-100" : "text-fg-ghost opacity-0 group-hover/msg:opacity-100"}`}
+                    className={`thread-fragment-link hidden items-start justify-end text-right font-mono text-[11px] leading-none transition-opacity select-none focus-visible:opacity-100 focus-visible:text-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg lg:flex ${lineNumberOffsetClass(msg)} ${isHighlighted ? "text-accent opacity-100" : "text-fg-ghost opacity-0 group-hover/msg:opacity-100"}`}
                     onClick={(e) => {
                       e.preventDefault();
-                      const hash = `#m${msg.ordinal}`;
+                      const activeRange = parseMessageHashRange(activeHash);
+                      const hash =
+                        e.shiftKey && activeRange
+                          ? buildMessageHash(activeRange.start, msg.ordinal)
+                          : buildMessageHash(msg.ordinal, msg.ordinal);
+
                       window.history.replaceState(null, "", hash);
                       window.dispatchEvent(new HashChangeEvent("hashchange"));
                       const url = `${window.location.origin}${window.location.pathname}${hash}`;
-                      navigator.clipboard.writeText(url);
+                      void navigator.clipboard.writeText(url);
                     }}
-                    title={`Link to message #m${msg.ordinal}`}
+                    aria-label={`Copy link to message #m${msg.ordinal}. Hold Shift to extend the current selection into a range.`}
+                    title={`Link to message #m${msg.ordinal}. Hold Shift to extend the current selection into a range.`}
                   >
                     {msg.ordinal}
                   </a>
