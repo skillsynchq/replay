@@ -43,6 +43,11 @@ interface ImageBlock {
 }
 
 type ContentBlock = TextBlock | ThinkingBlock | ToolUseBlock | ToolResultBlock | ImageBlock;
+type HighlightMode = "text" | "block" | "none";
+
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(" ");
+}
 
 // --- Helpers ---
 
@@ -119,24 +124,39 @@ function tryFormatJson(content: string): string | null {
 export function ContentBlockRenderer({
   blocks,
   toolResults,
+  highlightMode = "none",
 }: {
   blocks: ContentBlock[];
   toolResults?: Map<string, string>;
+  highlightMode?: HighlightMode;
 }) {
   return (
     <div className="space-y-2">
       {blocks.map((block, i) => {
         switch (block.type) {
           case "text":
-            return <TextBlockView key={i} block={block} />;
+            return (
+              <TextBlockView
+                key={i}
+                block={block}
+                highlighted={highlightMode === "text"}
+              />
+            );
           case "thinking":
-            return <ThinkingBlockView key={i} block={block} />;
+            return (
+              <ThinkingBlockView
+                key={i}
+                block={block}
+                highlighted={highlightMode === "block"}
+              />
+            );
           case "tool_use":
             return (
               <ToolUseBlockView
                 key={i}
                 block={block}
                 result={toolResults?.get(block.id)}
+                highlighted={highlightMode === "block"}
               />
             );
           case "tool_result":
@@ -147,7 +167,12 @@ export function ContentBlockRenderer({
                 key={i}
                 src={`data:${block.source.media_type};base64,${block.source.data}`}
                 alt="Attached image"
-                className="max-w-full rounded-[4px] border border-border"
+                className={cx(
+                  "max-w-full rounded-[4px] border",
+                  highlightMode === "block"
+                    ? "border-accent bg-accent/4"
+                    : "border-border"
+                )}
               />
             );
           default:
@@ -160,18 +185,39 @@ export function ContentBlockRenderer({
 
 // --- Text ---
 
-function TextBlockView({ block }: { block: TextBlock }) {
+function TextBlockView({
+  block,
+  highlighted,
+}: {
+  block: TextBlock;
+  highlighted: boolean;
+}) {
   if (!block.text.trim()) return null;
-  return <Markdown content={block.text} />;
+
+  const content = <Markdown content={block.text} />;
+  if (!highlighted) return content;
+
+  return <div className="thread-selected-text">{content}</div>;
 }
 
 // --- Thinking ---
 
-function ThinkingBlockView({ block }: { block: ThinkingBlock }) {
+function ThinkingBlockView({
+  block,
+  highlighted,
+}: {
+  block: ThinkingBlock;
+  highlighted: boolean;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="border border-border rounded-[4px] overflow-hidden">
+    <div
+      className={cx(
+        "overflow-hidden rounded-[4px] border",
+        highlighted ? "border-accent bg-accent/4" : "border-border"
+      )}
+    >
       <button
         type="button"
         onClick={() => setOpen(!open)}
@@ -202,22 +248,26 @@ function ThinkingBlockView({ block }: { block: ThinkingBlock }) {
 function ToolUseBlockView({
   block,
   result,
+  highlighted,
 }: {
   block: ToolUseBlock;
   result?: string;
+  highlighted: boolean;
 }) {
   if (block.name === "Edit") {
-    return <EditToolView input={block.input} />;
+    return <EditToolView input={block.input} highlighted={highlighted} />;
   }
-  return <ToolPill block={block} result={result} />;
+  return <ToolPill block={block} result={result} highlighted={highlighted} />;
 }
 
 function ToolPill({
   block,
   result,
+  highlighted,
 }: {
   block: ToolUseBlock;
   result?: string;
+  highlighted: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const summary = toolSummary(block);
@@ -240,7 +290,12 @@ function ToolPill({
 
   if (!hasExpandableContent) {
     return (
-      <div className="flex items-center gap-2 border border-border bg-surface px-3 py-1.5 font-mono text-[11px] text-fg-ghost rounded-[4px]">
+      <div
+        className={cx(
+          "flex items-center gap-2 rounded-[4px] border bg-surface px-3 py-1.5 font-mono text-[11px] text-fg-ghost",
+          highlighted ? "border-accent bg-accent/4" : "border-border"
+        )}
+      >
         {toolIcon(block.name)}
         <span className="truncate">{summary}</span>
       </div>
@@ -248,7 +303,12 @@ function ToolPill({
   }
 
   return (
-    <div className="border border-border rounded-[4px] overflow-hidden">
+    <div
+      className={cx(
+        "overflow-hidden rounded-[4px] border",
+        highlighted ? "border-accent bg-accent/4" : "border-border"
+      )}
+    >
       <button
         type="button"
         onClick={() => setOpen(!open)}
@@ -345,13 +405,24 @@ function JsonHighlight({ json }: { json: string }) {
 
 // --- Edit tool (always expanded as diff) ---
 
-function EditToolView({ input }: { input: Record<string, unknown> }) {
+function EditToolView({
+  input,
+  highlighted,
+}: {
+  input: Record<string, unknown>;
+  highlighted: boolean;
+}) {
   const filePath = shortPath(input.file_path as string);
   const oldString = input.old_string as string;
   const newString = input.new_string as string;
 
   return (
-    <div className="overflow-hidden border border-border rounded-[4px]">
+    <div
+      className={cx(
+        "overflow-hidden rounded-[4px] border",
+        highlighted ? "border-accent bg-accent/4" : "border-border"
+      )}
+    >
       <div className="flex items-center gap-2 border-b border-border bg-surface px-3 py-1.5">
         <FileMark className="size-3 text-fg-faint" />
         <span className="font-mono text-[11px] text-fg-subtle">

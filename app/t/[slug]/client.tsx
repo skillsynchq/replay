@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useCallback, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { AgentMark } from "@/app/components/icons";
 import { VisibilitySelector } from "@/app/components/visibility-selector";
@@ -107,11 +107,54 @@ function hasVisibleContent(msg: MessageData): boolean {
   return msg.content.trim().length > 0;
 }
 
+function firstRenderableBlock(msg: MessageData): Record<string, unknown> | null {
+  if (!msg.contentBlocks) return null;
+
+  for (const block of msg.contentBlocks) {
+    if (block.type === "tool_result") continue;
+    if (
+      block.type === "text" &&
+      typeof (block as { text?: string }).text === "string" &&
+      !(block as { text: string }).text.trim()
+    ) {
+      continue;
+    }
+    return block;
+  }
+
+  return null;
+}
+
+function messageHighlightMode(msg: MessageData): "text" | "block" {
+  if (!msg.contentBlocks || msg.contentBlocks.length === 0) return "text";
+
+  for (const block of msg.contentBlocks) {
+    if (block.type === "tool_result") continue;
+    if (block.type !== "text") return "block";
+  }
+
+  return "text";
+}
+
+function lineNumberOffsetClass(msg: MessageData): string {
+  const mode = messageHighlightMode(msg);
+
+  if (mode === "block") return "pt-4";
+  if (msg.role === "user") return "pt-2.5";
+
+  const firstBlock = firstRenderableBlock(msg);
+  if (!firstBlock || firstBlock.type === "text") return "pt-[14px]";
+  return "pt-4";
+}
+
 function renderMessage(
   msg: MessageData,
   isOwner: boolean,
-  toolResults: Map<string, string>
+  toolResults: Map<string, string>,
+  highlighted: boolean
 ) {
+  const highlightMode = highlighted ? messageHighlightMode(msg) : "none";
+
   if (msg.redacted && !isOwner) {
     return <RedactedMessage key={msg.id} />;
   }
@@ -135,7 +178,15 @@ function renderMessage(
       if (!text.trim() && imageBlocks.length === 0) return null;
       return (
         <UserMessage key={msg.id}>
-          {text.trim() && <ParsedUserContent text={text} />}
+          {text.trim() && (
+            <div
+              className={
+                highlightMode === "text" ? "thread-selected-text" : undefined
+              }
+            >
+              <ParsedUserContent text={text} />
+            </div>
+          )}
           {imageBlocks.map((b, i) => {
             const src = (b as { type: "image"; source: { media_type: string; data: string } }).source;
             return (
@@ -143,7 +194,11 @@ function renderMessage(
                 key={i}
                 src={`data:${src.media_type};base64,${src.data}`}
                 alt="Attached image"
-                className="max-w-full rounded-[4px] border border-border mt-2"
+                className={`mt-2 max-w-full rounded-[4px] border ${
+                  highlightMode === "block"
+                    ? "border-accent bg-accent/4"
+                    : "border-border"
+                }`}
               />
             );
           })}
@@ -152,7 +207,15 @@ function renderMessage(
     }
 
     if (!msg.content.trim()) return null;
-    return <UserMessage key={msg.id}><ParsedUserContent text={msg.content} /></UserMessage>;
+    return (
+      <UserMessage key={msg.id}>
+        <div
+          className={highlightMode === "text" ? "thread-selected-text" : undefined}
+        >
+          <ParsedUserContent text={msg.content} />
+        </div>
+      </UserMessage>
+    );
   }
 
   // Assistant messages: render structured blocks or fall back to text
@@ -162,9 +225,14 @@ function renderMessage(
         <ContentBlockRenderer
           blocks={msg.contentBlocks as never[]}
           toolResults={toolResults}
+          highlightMode={highlightMode}
         />
       ) : (
-        <Markdown content={msg.content} />
+        <div
+          className={highlightMode === "text" ? "thread-selected-text" : undefined}
+        >
+          <Markdown content={msg.content} />
+        </div>
       )}
     </AssistantMessage>
   );
@@ -230,6 +298,33 @@ export function ThreadViewerClient({
     [messages]
   );
 
+  // Parse hash like #m3 or #m3-m7 into a set of highlighted ordinals
+  const parseHash = useCallback((hash: string): Set<number> => {
+    const set = new Set<number>();
+    const match = hash.match(/^#m(\d+)(?:-m(\d+))?$/);
+    if (!match) return set;
+    const start = parseInt(match[1], 10);
+    const end = match[2] ? parseInt(match[2], 10) : start;
+    const lo = Math.min(start, end);
+    const hi = Math.max(start, end);
+    for (let i = lo; i <= hi; i++) set.add(i);
+    return set;
+  }, []);
+
+  const activeHash = useSyncExternalStore(
+    (onStoreChange) => {
+      window.addEventListener("hashchange", onStoreChange);
+      return () => window.removeEventListener("hashchange", onStoreChange);
+    },
+    () => window.location.hash,
+    () => ""
+  );
+
+  const highlighted = useMemo(
+    () => parseHash(activeHash),
+    [activeHash, parseHash]
+  );
+
   // Build context string for the AI assistant
   const assistantThreadContext = useMemo(() => {
     const parts: string[] = [
@@ -292,16 +387,37 @@ export function ThreadViewerClient({
         {/* Conversation — left column */}
         <PageReveal delay={80} className="min-w-0 flex-1">
           <ThreadConversation>
-            {visibleMessages.map((msg) => (
-              <div
-                key={msg.id}
-                id={`m${msg.ordinal}`}
-                data-ordinal={msg.ordinal}
-                className="thread-fragment-target"
-              >
-                {renderMessage(msg, isOwner, toolResults)}
-              </div>
-            ))}
+            {visibleMessages.map((msg) => {
+              const isHighlighted = highlighted.has(msg.ordinal);
+
+              return (
+                <div
+                  key={msg.id}
+                  id={`m${msg.ordinal}`}
+                  data-ordinal={msg.ordinal}
+                  className={`thread-fragment-target group/msg relative lg:grid lg:grid-cols-[2.75rem_minmax(0,1fr)] lg:gap-x-4 ${isHighlighted ? "permalink-active" : ""}`}
+                >
+                  <a
+                    href={`#m${msg.ordinal}`}
+                    className={`thread-fragment-link hidden items-start justify-end text-right font-mono text-[11px] leading-none transition-opacity select-none lg:flex ${lineNumberOffsetClass(msg)} ${isHighlighted ? "text-accent opacity-100" : "text-fg-ghost opacity-0 group-hover/msg:opacity-100"}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const hash = `#m${msg.ordinal}`;
+                      window.history.replaceState(null, "", hash);
+                      window.dispatchEvent(new HashChangeEvent("hashchange"));
+                      const url = `${window.location.origin}${window.location.pathname}${hash}`;
+                      navigator.clipboard.writeText(url);
+                    }}
+                    title={`Link to message #m${msg.ordinal}`}
+                  >
+                    {msg.ordinal}
+                  </a>
+                  <div className="min-w-0">
+                    {renderMessage(msg, isOwner, toolResults, isHighlighted)}
+                  </div>
+                </div>
+              );
+            })}
           </ThreadConversation>
         </PageReveal>
 

@@ -112,13 +112,25 @@ html {
 }
 
 .thread-fragment-target {
-  border-left: 2px solid transparent;
+  border-left: 0 !important;
+  background: transparent !important;
   scroll-margin-top: 7rem;
 }
 
-.thread-fragment-target:target {
-  border-left-color: var(--accent);
-  background-color: color-mix(in srgb, var(--accent) 6%, transparent);
+.thread-fragment-target.permalink-active {
+  border-left: 0 !important;
+  background: transparent !important;
+}
+
+.thread-fragment-target.permalink-active .thread-fragment-link {
+  color: var(--accent);
+  opacity: 1;
+}
+
+.thread-selected-text {
+  margin-left: 1px;
+  border-left: 2px solid var(--accent);
+  padding-left: 0.875rem;
 }
 
 .search-highlight-flash {
