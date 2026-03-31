@@ -72,7 +72,8 @@ message: {
 | `text` | `{ type: "text", text: string }` | Plain text from the assistant or user |
 | `thinking` | `{ type: "thinking", thinking: string }` | Extended thinking / chain-of-thought |
 | `tool_use` | `{ type: "tool_use", id: string, name: string, input: object }` | Tool invocation |
-| `tool_result` | `{ type: "tool_result", tool_use_id: string, content: string }` | Result of a tool call (on user messages) |
+| `tool_result` | `{ type: "tool_result", tool_use_id: string, content: string \| ContentItem[], is_error?: boolean }` | Result of a tool call (on user messages). Content can be a string or an array of `{type:"text", text}` / `{type:"image", source:{type,media_type,data}}` sub-blocks. |
+| `image` | `{ type: "image", source: { type: string, media_type: string, data: string } }` | Inline image (base64-encoded, e.g. screenshots pasted by user) |
 
 #### Tool Use — Available Tools and Their Inputs
 
@@ -224,7 +225,12 @@ type ContentBlock =
   | { type: "text", text: string }
   | { type: "thinking", thinking: string }
   | { type: "tool_use", id: string, name: string, input: Record<string, unknown> }
-  | { type: "tool_result", tool_use_id: string, content: string }
+  | { type: "tool_result", tool_use_id: string, content: string | ContentItem[], is_error?: boolean }
+  | { type: "image", source: { type: string, media_type: string, data: string } }
+
+type ContentItem =
+  | { type: "text", text: string }
+  | { type: "image", source: { type: string, media_type: string, data: string } }
 ```
 
 ### What this enables on the UI
