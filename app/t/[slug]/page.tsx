@@ -3,6 +3,7 @@ import { eq, asc, and, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { thread, message, threadShare } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
+import { buildPipeline, processDeep } from "@/lib/thread-processors";
 import { headers } from "next/headers";
 import { Nav } from "@/app/components/nav";
 import { Assistant } from "@/app/components/assistant";
@@ -69,6 +70,9 @@ export default async function ThreadPage({
 
   const promptCount = messages.filter((m) => m.role === "user").length;
 
+  // Run content processors (path relativization, etc.) over all messages
+  const processor = buildPipeline({ projectPath: threadRow.projectPath });
+
   return (
     <div className="flex min-h-dvh flex-col">
       <Nav />
@@ -89,21 +93,24 @@ export default async function ThreadPage({
             sessionTs: threadRow.sessionTs.toISOString(),
             createdAt: threadRow.createdAt.toISOString(),
           }}
-          messages={messages.map((m) => ({
-            id: m.id,
-            ordinal: m.ordinal,
-            role: m.role,
-            content: m.redacted && !isOwner ? "" : m.content,
-            contentBlocks:
-              m.redacted && !isOwner
-                ? null
-                : ((m.contentBlocks ?? null) as Record<string, unknown>[] | null),
-            model: m.messageModel,
-            stopReason: m.stopReason,
-            usage: m.usage as { input_tokens: number; output_tokens: number } | null,
-            redacted: m.redacted,
-            timestamp: m.timestamp.toISOString(),
-          }))}
+          messages={processDeep(
+            messages.map((m) => ({
+              id: m.id,
+              ordinal: m.ordinal,
+              role: m.role,
+              content: m.redacted && !isOwner ? "" : m.content,
+              contentBlocks:
+                m.redacted && !isOwner
+                  ? null
+                  : ((m.contentBlocks ?? null) as Record<string, unknown>[] | null),
+              model: m.messageModel,
+              stopReason: m.stopReason,
+              usage: m.usage as { input_tokens: number; output_tokens: number } | null,
+              redacted: m.redacted,
+              timestamp: m.timestamp.toISOString(),
+            })),
+            processor ?? ((t) => t)
+          )}
           owner={owner}
           promptCount={promptCount}
           isOwner={isOwner}
