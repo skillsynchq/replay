@@ -36,7 +36,7 @@ export function VisibilitySelector({
     const focusFrame = requestAnimationFrame(() => {
       menuRef.current
         ?.querySelector<HTMLElement>('[data-visibility-option="true"]')
-        ?.focus();
+        ?.focus({ preventScroll: true });
     });
 
     function dismiss(event: MouseEvent | KeyboardEvent) {

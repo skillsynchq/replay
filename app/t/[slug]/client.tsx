@@ -1,8 +1,15 @@
 "use client";
 
-import { useMemo, useCallback, useSyncExternalStore } from "react";
+import {
+  useMemo,
+  useCallback,
+  useSyncExternalStore,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import Link from "next/link";
-import { AgentMark } from "@/app/components/icons";
+import { AgentMark, ChevronDown, XIcon } from "@/app/components/icons";
 import { VisibilitySelector } from "@/app/components/visibility-selector";
 import { EditableTitle } from "@/app/components/editable-title";
 import { TagEditor } from "@/app/components/tag-editor";
@@ -58,6 +65,8 @@ interface ThreadViewerProps {
 }
 
 const MESSAGE_HASH_PATTERN = /^#m(\d+)(?:-m(\d+))?$/;
+const MOBILE_TRAY_COLLAPSED_HEIGHT = "62dvh";
+const MOBILE_TRAY_EXPANDED_HEIGHT = "80dvh";
 
 function agentLabel(agent: string): string {
   if (agent === "claude") return "Claude Code";
@@ -97,6 +106,105 @@ function SidebarItem({
         {label}
       </span>
       <div className="text-[11px] text-fg-muted">{children}</div>
+    </div>
+  );
+}
+
+function ThreadDetailsPanel({
+  thread,
+  promptCount,
+  isOwner,
+  assistantThreadContext,
+  totalUsage,
+  tagEditorIdPrefix,
+}: {
+  thread: ThreadViewerProps["thread"];
+  promptCount: number;
+  isOwner: boolean;
+  assistantThreadContext: string;
+  totalUsage: { input: number; output: number };
+  tagEditorIdPrefix: string;
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <VisibilitySelector
+          visibility={thread.visibility}
+          slug={thread.slug}
+          isOwner={isOwner}
+        />
+        {isOwner ? (
+          <AssistantTrigger threadContext={assistantThreadContext} />
+        ) : null}
+      </div>
+
+      <div className="space-y-3 border-t border-border pt-3">
+        <SidebarItem label="Thread">
+          <span className="font-mono">{formatDate(thread.sessionTs)}</span>
+        </SidebarItem>
+
+        {thread.projectPath ? (
+          <SidebarItem label="Project">
+            <span className="font-mono text-[11px]">
+              {thread.projectPath.split("/").pop() ?? thread.projectPath}
+            </span>
+          </SidebarItem>
+        ) : null}
+
+        {thread.gitBranch ? (
+          <SidebarItem label="Branch">
+            <span className="font-mono text-[11px]">{thread.gitBranch}</span>
+          </SidebarItem>
+        ) : null}
+
+        <SidebarItem label="Agent">
+          <span className="flex items-center gap-1">
+            <AgentMark
+              agent={thread.agent}
+              className="size-3.5 text-fg-subtle"
+            />
+            {agentLabel(thread.agent)}
+          </span>
+        </SidebarItem>
+
+        {thread.model ? (
+          <SidebarItem label="Model">{thread.model}</SidebarItem>
+        ) : null}
+
+        <SidebarItem label="Prompts">
+          <span className="font-mono">{promptCount}</span>
+        </SidebarItem>
+
+        <SidebarItem label="Messages">
+          <span className="font-mono">{thread.messageCount}</span>
+        </SidebarItem>
+
+        {totalUsage.input > 0 ? (
+          <SidebarItem label="Tokens">
+            <span className="font-mono text-[11px]">
+              {totalUsage.input.toLocaleString()} in /{" "}
+              {totalUsage.output.toLocaleString()} out
+            </span>
+          </SidebarItem>
+        ) : null}
+
+        {thread.cliVersion ? (
+          <SidebarItem label="CLI">
+            <span className="font-mono text-[11px]">v{thread.cliVersion}</span>
+          </SidebarItem>
+        ) : null}
+      </div>
+
+      {isOwner || thread.tags.length > 0 ? (
+        <div className="border-t border-border pt-3">
+          <TagEditor
+            tags={thread.tags}
+            slug={thread.slug}
+            isOwner={isOwner}
+            idPrefix={tagEditorIdPrefix}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -339,6 +447,17 @@ export function ThreadViewerClient({
     [messages]
   );
 
+  const [mobileDetailsOpen, setMobileDetailsOpen] = useState(false);
+  const [mobileDetailsExpanded, setMobileDetailsExpanded] = useState(false);
+  const [mobileTrayOffset, setMobileTrayOffset] = useState(0);
+  const [mobileTrayDragging, setMobileTrayDragging] = useState(false);
+  const mobileTrayRef = useRef<HTMLDivElement>(null);
+  const mobileDetailsExpandedRef = useRef(false);
+  const mobileLockedScrollYRef = useRef(0);
+  const mobileDragPointerIdRef = useRef<number | null>(null);
+  const mobileDragStartYRef = useRef(0);
+  const mobileDragStartExpandedRef = useRef(false);
+
   const visibleMessages = useMemo(
     () => messages.filter((msg) => hasVisibleContent(msg)),
     [messages]
@@ -369,6 +488,24 @@ export function ThreadViewerClient({
     () => parseHash(activeHash),
     [activeHash, parseHash]
   );
+
+  // Scroll to hash target on mount and hash change
+  useEffect(() => {
+    const range = parseMessageHashRange(activeHash);
+    if (!range) return;
+
+    const targetOrdinal = range.start;
+    requestAnimationFrame(() => {
+      const element = window.document.getElementById(`m${targetOrdinal}`);
+      if (!element) return;
+
+      const top = element.getBoundingClientRect().top + window.scrollY - 300;
+      window.scrollTo({
+        top: Math.max(0, top),
+        behavior: "instant",
+      });
+    });
+  }, [activeHash]);
 
   // Build context string for the AI assistant
   const assistantThreadContext = useMemo(() => {
@@ -402,8 +539,179 @@ export function ThreadViewerClient({
     return parts.join("\n");
   }, [thread, messages, promptCount]);
 
+  const closeMobileDetails = useCallback(() => {
+    mobileDragPointerIdRef.current = null;
+    setMobileTrayDragging(false);
+    setMobileTrayOffset(0);
+    setMobileDetailsExpanded(false);
+    setMobileDetailsOpen(false);
+  }, []);
+
+  const collapseMobileDetails = useCallback(() => {
+    mobileDragPointerIdRef.current = null;
+    setMobileTrayDragging(false);
+    setMobileTrayOffset(0);
+    setMobileDetailsExpanded(false);
+  }, []);
+
+  const openMobileDetails = useCallback(() => {
+    mobileDragPointerIdRef.current = null;
+    setMobileTrayDragging(false);
+    setMobileTrayOffset(0);
+    setMobileDetailsExpanded(false);
+    setMobileDetailsOpen(true);
+  }, []);
+
+  const handleMobileBackdropClick = useCallback(() => {
+    if (mobileDetailsExpanded) {
+      collapseMobileDetails();
+      return;
+    }
+    closeMobileDetails();
+  }, [collapseMobileDetails, closeMobileDetails, mobileDetailsExpanded]);
+
+  const handleMobileTrayPointerDown = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+
+      mobileDragPointerIdRef.current = event.pointerId;
+      mobileDragStartYRef.current = event.clientY;
+      mobileDragStartExpandedRef.current = mobileDetailsExpanded;
+      setMobileTrayDragging(true);
+      setMobileTrayOffset(0);
+      event.currentTarget.setPointerCapture(event.pointerId);
+    },
+    [mobileDetailsExpanded]
+  );
+
+  const handleMobileTrayPointerMove = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (mobileDragPointerIdRef.current !== event.pointerId) return;
+
+      const rawDelta = event.clientY - mobileDragStartYRef.current;
+      let nextOffset = rawDelta;
+
+      if (rawDelta < 0) {
+        nextOffset = mobileDragStartExpandedRef.current
+          ? Math.max(rawDelta * 0.2, -48)
+          : Math.max(rawDelta * 0.5, -120);
+      } else {
+        nextOffset = Math.min(rawDelta, 320);
+      }
+
+      setMobileTrayOffset(nextOffset);
+    },
+    []
+  );
+
+  const handleMobileTrayPointerEnd = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (mobileDragPointerIdRef.current !== event.pointerId) return;
+
+      const delta = event.clientY - mobileDragStartYRef.current;
+      const startedExpanded = mobileDragStartExpandedRef.current;
+
+      mobileDragPointerIdRef.current = null;
+      setMobileTrayDragging(false);
+      setMobileTrayOffset(0);
+
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+
+      if (startedExpanded) {
+        if (delta > 220) {
+          closeMobileDetails();
+          return;
+        }
+        if (delta > 80) {
+          setMobileDetailsExpanded(false);
+          return;
+        }
+        setMobileDetailsExpanded(true);
+        return;
+      }
+
+      if (delta < -80) {
+        setMobileDetailsExpanded(true);
+        return;
+      }
+      if (delta > 140) {
+        closeMobileDetails();
+        return;
+      }
+      setMobileDetailsExpanded(false);
+    },
+    [closeMobileDetails]
+  );
+
+  const mobileTrayHeight = mobileDetailsExpanded
+    ? MOBILE_TRAY_EXPANDED_HEIGHT
+    : MOBILE_TRAY_COLLAPSED_HEIGHT;
+
+  useEffect(() => {
+    mobileDetailsExpandedRef.current = mobileDetailsExpanded;
+  }, [mobileDetailsExpanded]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 1024px)");
+    const handleChange = (event: MediaQueryListEvent) => {
+      if (event.matches) {
+        closeMobileDetails();
+      }
+    };
+
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, [closeMobileDetails]);
+
+  useEffect(() => {
+    if (!mobileDetailsOpen) return;
+
+    const previousPosition = document.body.style.position;
+    const previousTop = document.body.style.top;
+    const previousLeft = document.body.style.left;
+    const previousRight = document.body.style.right;
+    const previousWidth = document.body.style.width;
+    const previousOverflow = document.body.style.overflow;
+    mobileLockedScrollYRef.current = window.scrollY;
+
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${mobileLockedScrollYRef.current}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    document.body.style.width = "100%";
+    document.body.style.overflow = "hidden";
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        if (mobileDetailsExpandedRef.current) {
+          collapseMobileDetails();
+        } else {
+          closeMobileDetails();
+        }
+        return;
+      }
+
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.position = previousPosition;
+      document.body.style.top = previousTop;
+      document.body.style.left = previousLeft;
+      document.body.style.right = previousRight;
+      document.body.style.width = previousWidth;
+      document.body.style.overflow = previousOverflow;
+      window.scrollTo(0, mobileLockedScrollYRef.current);
+    };
+  }, [closeMobileDetails, collapseMobileDetails, mobileDetailsOpen]);
+
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-6xl pb-24 lg:pb-0">
       {/* Title + Author — centered */}
       <PageReveal className="text-center">
         <EditableTitle
@@ -474,94 +782,138 @@ export function ThreadViewerClient({
 
         {/* Sidebar — right column */}
         <PageReveal delay={160} className="hidden w-48 shrink-0 lg:block">
-          <div className="sticky top-24 space-y-3">
-            <div className="flex items-start justify-between">
-              <VisibilitySelector
-                visibility={thread.visibility}
-                slug={thread.slug}
-                isOwner={isOwner}
-              />
-              {isOwner && (
-                <AssistantTrigger threadContext={assistantThreadContext} />
-              )}
-            </div>
-
-            <div className="space-y-3 border-t border-border pt-3">
-              <SidebarItem label="Thread">
-                <span className="font-mono">
-                  {formatDate(thread.sessionTs)}
-                </span>
-              </SidebarItem>
-
-              {thread.projectPath && (
-                <SidebarItem label="Project">
-                  <span className="font-mono text-[11px]">
-                    {thread.projectPath.split("/").pop() ?? thread.projectPath}
-                  </span>
-                </SidebarItem>
-              )}
-
-              {thread.gitBranch && (
-                <SidebarItem label="Branch">
-                  <span className="font-mono text-[11px]">
-                    {thread.gitBranch}
-                  </span>
-                </SidebarItem>
-              )}
-
-              <SidebarItem label="Agent">
-                <span className="flex items-center gap-1">
-                  <AgentMark
-                    agent={thread.agent}
-                    className="size-3.5 text-fg-subtle"
-                  />
-                  {agentLabel(thread.agent)}
-                </span>
-              </SidebarItem>
-
-              {thread.model && (
-                <SidebarItem label="Model">{thread.model}</SidebarItem>
-              )}
-
-              <SidebarItem label="Prompts">
-                <span className="font-mono">{promptCount}</span>
-              </SidebarItem>
-
-              <SidebarItem label="Messages">
-                <span className="font-mono">{thread.messageCount}</span>
-              </SidebarItem>
-
-              {totalUsage.input > 0 && (
-                <SidebarItem label="Tokens">
-                  <span className="font-mono text-[11px]">
-                    {totalUsage.input.toLocaleString()} in /{" "}
-                    {totalUsage.output.toLocaleString()} out
-                  </span>
-                </SidebarItem>
-              )}
-
-              {thread.cliVersion && (
-                <SidebarItem label="CLI">
-                  <span className="font-mono text-[11px]">
-                    v{thread.cliVersion}
-                  </span>
-                </SidebarItem>
-              )}
-            </div>
-
-            {(isOwner || thread.tags.length > 0) && (
-              <div className="border-t border-border pt-3">
-                <TagEditor
-                  tags={thread.tags}
-                  slug={thread.slug}
-                  isOwner={isOwner}
-                />
-              </div>
-            )}
-
+          <div className="sticky top-24">
+            <ThreadDetailsPanel
+              thread={thread}
+              promptCount={promptCount}
+              isOwner={isOwner}
+              assistantThreadContext={assistantThreadContext}
+              totalUsage={totalUsage}
+              tagEditorIdPrefix="thread-sidebar-tags"
+            />
           </div>
         </PageReveal>
       </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-bg/92 backdrop-blur-md lg:hidden">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 h-10 -translate-y-full bg-gradient-to-t from-bg/70 to-transparent"
+        />
+        <PageReveal delay={180}>
+          <button
+            type="button"
+            onClick={openMobileDetails}
+            className={`flex w-full items-center justify-between px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.85rem)] text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-inset ${mobileDetailsOpen ? "bg-surface/70" : "hover:bg-surface/50"}`}
+            aria-haspopup="dialog"
+            aria-expanded={mobileDetailsOpen}
+            aria-controls="thread-mobile-details"
+          >
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.22em] text-fg-ghost">
+                Thread Details
+              </div>
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-fg-muted">
+                <span>{agentLabel(thread.agent)}</span>
+                <span className="text-fg-faint">/</span>
+                <span className="font-mono">{thread.messageCount} msgs</span>
+                {thread.model ? (
+                  <>
+                    <span className="text-fg-faint">/</span>
+                    <span className="font-mono text-[11px] text-fg-ghost">
+                      {thread.model}
+                    </span>
+                  </>
+                ) : null}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 pl-3 text-fg-ghost">
+              <span className="font-mono text-[10px] uppercase tracking-[0.18em]">
+                Open
+              </span>
+              <ChevronDown className="size-3 rotate-180" />
+            </div>
+          </button>
+        </PageReveal>
+      </div>
+
+      {mobileDetailsOpen ? (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            style={{ animation: "details-backdrop-in 180ms ease-out" }}
+            onClick={handleMobileBackdropClick}
+            aria-label="Close thread details"
+          />
+
+          <div
+            ref={mobileTrayRef}
+            id="thread-mobile-details"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="thread-mobile-details-title"
+            className="absolute inset-x-0 bottom-0 max-h-[82vh] overflow-hidden rounded-t-[18px] border border-b-0 border-border bg-bg shadow-[0_-24px_60px_rgba(0,0,0,0.34)]"
+            style={{
+              height: mobileTrayHeight,
+              transform: `translateY(${mobileTrayOffset}px)`,
+              transition: mobileTrayDragging
+                ? undefined
+                : "height 220ms ease, transform 220ms ease",
+            }}
+          >
+            <div
+              className="touch-none select-none"
+              onPointerDown={handleMobileTrayPointerDown}
+              onPointerMove={handleMobileTrayPointerMove}
+              onPointerUp={handleMobileTrayPointerEnd}
+              onPointerCancel={handleMobileTrayPointerEnd}
+            >
+              <div className="flex justify-center pt-2">
+                <div className="h-1 w-10 rounded-full bg-border" />
+              </div>
+
+              <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                <div>
+                  <h2
+                    id="thread-mobile-details-title"
+                    className="text-[13px] text-fg-muted"
+                  >
+                    Thread details
+                  </h2>
+                  <p className="mt-0.5 text-[10px] uppercase tracking-[0.18em] text-fg-ghost">
+                    {formatDate(thread.sessionTs)}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeMobileDetails}
+                  className="rounded-[4px] p-1 text-fg-ghost transition-colors duration-150 hover:text-fg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+                  aria-label="Close thread details"
+                >
+                  <XIcon className="size-3.5" />
+                </button>
+              </div>
+            </div>
+
+            <div
+              className="overflow-y-auto px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-4"
+              style={{
+                height: `calc(${mobileTrayHeight} - 3.75rem)`,
+              }}
+            >
+              <ThreadDetailsPanel
+                thread={thread}
+                promptCount={promptCount}
+                isOwner={isOwner}
+                assistantThreadContext={assistantThreadContext}
+                totalUsage={totalUsage}
+                tagEditorIdPrefix="thread-mobile-tags"
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

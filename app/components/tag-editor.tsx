@@ -8,11 +8,18 @@ interface TagEditorProps {
   tags: string[];
   slug: string;
   isOwner: boolean;
+  idPrefix?: string;
 }
 
-export function TagEditor({ tags, slug, isOwner }: TagEditorProps) {
+export function TagEditor({
+  tags,
+  slug,
+  isOwner,
+  idPrefix = "tag-editor",
+}: TagEditorProps) {
   const [localTags, setLocalTags] = useState(tags);
   const [inputValue, setInputValue] = useState("");
+  const inputId = `${idPrefix}-${slug}`;
 
   if (!isOwner && localTags.length === 0) return null;
 
@@ -67,11 +74,11 @@ export function TagEditor({ tags, slug, isOwner }: TagEditorProps) {
       </div>
       {isOwner && (
         <>
-          <label className="sr-only" htmlFor={`tag-editor-${slug}`}>
+          <label className="sr-only" htmlFor={inputId}>
             Add a tag to this thread
           </label>
           <input
-            id={`tag-editor-${slug}`}
+            id={inputId}
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}

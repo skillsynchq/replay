@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
+    "@chenglou/pretext": "^0.0.4",
     "@neondatabase/serverless": "^1.0.2",
     "better-auth": "^1.5.5",
     "drizzle-orm": "^0.45.1",
