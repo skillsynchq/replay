@@ -13,7 +13,7 @@ interface ThreadItem {
   id: string;
   slug: string;
   title: string | null;
-  conciseTitle: string | null;
+
   keyPoints: string[] | null;
   agent: string;
   model: string | null;
@@ -137,7 +137,7 @@ export function DashboardClient({
                     key={thread.id}
                     slug={thread.slug}
                     title={thread.title}
-                    conciseTitle={thread.conciseTitle}
+
                     keyPoints={thread.keyPoints}
                     agent={thread.agent}
                     model={thread.model}

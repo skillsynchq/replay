@@ -89,7 +89,7 @@ export async function GET(
       gitBranch: threadRow.gitBranch,
       cliVersion: threadRow.cliVersion,
       keyPoints: threadRow.keyPoints,
-      conciseTitle: threadRow.conciseTitle,
+
       messageCount: threadRow.messageCount,
       sessionTs: threadRow.sessionTs,
       createdAt: threadRow.createdAt,
@@ -269,7 +269,7 @@ export async function PUT(
     );
   }
 
-  // Regenerate key points and concise title in the background
+  // Regenerate key points and verify/improve title in the background
   after(async () => {
     try {
       const textMessages = msgs.map((m) => ({
@@ -282,15 +282,15 @@ export async function PUT(
               : "",
       }));
 
-      const { keyPoints, conciseTitle } = await summarizeThread(
+      const { keyPoints, improvedTitle } = await summarizeThread(
         title,
         textMessages
       );
 
       const updates: Partial<typeof thread.$inferInsert> = {
         keyPoints: keyPoints.length > 0 ? keyPoints : null,
-        conciseTitle: conciseTitle ?? null,
       };
+      if (improvedTitle) updates.title = improvedTitle;
 
       await db
         .update(thread)

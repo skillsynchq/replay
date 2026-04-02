@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Generate key points and concise title in the background
+  // Generate key points and verify/improve title in the background
   after(async () => {
     try {
       const textMessages = messages.map((m) => ({
@@ -145,14 +145,14 @@ export async function POST(request: NextRequest) {
               : "",
       }));
 
-      const { keyPoints, conciseTitle } = await summarizeThread(
+      const { keyPoints, improvedTitle } = await summarizeThread(
         title,
         textMessages
       );
 
       const updates: Partial<typeof thread.$inferInsert> = {};
       if (keyPoints.length > 0) updates.keyPoints = keyPoints;
-      if (conciseTitle) updates.conciseTitle = conciseTitle;
+      if (improvedTitle) updates.title = improvedTitle;
 
       if (Object.keys(updates).length > 0) {
         await db
@@ -213,7 +213,7 @@ export async function GET(request: NextRequest) {
         model: thread.model,
         visibility: thread.visibility,
         keyPoints: thread.keyPoints,
-        conciseTitle: thread.conciseTitle,
+
         messageCount: thread.messageCount,
         sessionTs: thread.sessionTs,
         createdAt: thread.createdAt,

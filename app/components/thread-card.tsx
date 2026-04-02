@@ -5,7 +5,7 @@ import { VisibilityBadge } from "./visibility-badge";
 interface ThreadCardProps {
   slug: string;
   title: string | null;
-  conciseTitle?: string | null;
+
   keyPoints?: string[] | null;
   agent: string;
   model: string | null;
@@ -39,7 +39,6 @@ function agentLabel(agent: string): string {
 export function ThreadCard({
   slug,
   title,
-  conciseTitle,
   keyPoints,
   agent,
   model,
@@ -56,7 +55,7 @@ export function ThreadCard({
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <p className="truncate text-[14px] font-medium text-fg group-hover:text-accent transition-colors duration-150">
-            {conciseTitle ?? title ?? "Untitled thread"}
+            {title ?? "Untitled thread"}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
             <span className="flex items-center gap-1 text-[12px] text-fg-ghost">

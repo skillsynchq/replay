@@ -3,10 +3,11 @@ import Anthropic from "@anthropic-ai/sdk";
 const client = new Anthropic();
 
 const MAX_TRANSCRIPT_CHARS = 6000;
-const TITLE_LENGTH_THRESHOLD = 80;
+const MAX_TITLE_CONTEXT_CHARS = 2000;
 
 function buildTranscript(
-  messages: { role: string; content: string }[]
+  messages: { role: string; content: string }[],
+  maxChars: number = MAX_TRANSCRIPT_CHARS
 ): string {
   const lines = messages
     .filter((m) => m.content.trim())
@@ -16,80 +17,124 @@ function buildTranscript(
     })
     .join("\n\n");
 
-  if (lines.length <= MAX_TRANSCRIPT_CHARS) return lines;
+  if (lines.length <= maxChars) return lines;
 
-  const half = MAX_TRANSCRIPT_CHARS / 2;
+  const half = maxChars / 2;
   return lines.slice(0, half) + "\n\n[...]\n\n" + lines.slice(-half);
+}
+
+/**
+ * Verify title quality and generate a better one if needed.
+ * Uses only the first few messages (~2000 chars) to keep it cheap and fast.
+ */
+async function verifyTitle(
+  title: string | null,
+  messages: { role: string; content: string }[]
+): Promise<string | null> {
+  const opening = buildTranscript(messages.slice(0, 6), MAX_TITLE_CONTEXT_CHARS);
+  if (!opening.trim()) return null;
+
+  const response = await client.messages.create({
+    model: "claude-haiku-4-5",
+    max_tokens: 256,
+    messages: [
+      {
+        role: "user",
+        content: `You are evaluating the title of a coding conversation.
+
+Current title: "${title ?? "Untitled"}"
+
+Opening messages:
+${opening}
+
+Is this title clear, specific, and descriptive of what the conversation is about? A good title should:
+- Be concise (under 60 characters)
+- Describe the actual task or topic (not just the first message verbatim)
+- Be meaningful to someone scanning a list of threads
+
+Return ONLY valid JSON:
+- If the title is already good: {"keep": true}
+- If the title needs improvement: {"keep": false, "title": "your better title here"}`,
+      },
+    ],
+  });
+
+  const text =
+    response.content[0].type === "text" ? response.content[0].text : "";
+
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return null;
+
+  const parsed = JSON.parse(jsonMatch[0]) as {
+    keep: boolean;
+    title?: string;
+  };
+
+  if (parsed.keep) return null;
+
+  return typeof parsed.title === "string" && parsed.title.length > 0
+    ? parsed.title.slice(0, 60)
+    : null;
 }
 
 export async function summarizeThread(
   title: string | null,
   messages: { role: string; content: string }[]
-): Promise<{ keyPoints: string[]; conciseTitle: string | null }> {
+): Promise<{ keyPoints: string[]; improvedTitle: string | null }> {
   try {
     if (messages.length < 2) {
-      return { keyPoints: [], conciseTitle: null };
+      return { keyPoints: [], improvedTitle: null };
     }
 
     const transcript = buildTranscript(messages);
     if (!transcript.trim()) {
-      return { keyPoints: [], conciseTitle: null };
+      return { keyPoints: [], improvedTitle: null };
     }
 
-    const needsConciseTitle = !!title && title.length > TITLE_LENGTH_THRESHOLD;
+    // Run key points summarization and title verification in parallel
+    const [keyPointsResult, verifiedTitle] = await Promise.all([
+      client.messages
+        .create({
+          model: "claude-haiku-4-5",
+          max_tokens: 512,
+          messages: [
+            {
+              role: "user",
+              content: `Summarize this coding conversation.
 
-    const response = await client.messages.create({
-      model: "claude-haiku-4-5",
-      max_tokens: 512,
-      messages: [
-        {
-          role: "user",
-          content: `Summarize this coding conversation.
-
-Return ONLY valid JSON: {"key_points": ["...", "...", "..."], "concise_title": "..." }
+Return ONLY valid JSON: {"key_points": ["...", "...", "..."]}
 
 Rules:
 - key_points: 3-4 bullet points, each under 100 characters, capturing what was accomplished or discussed
-- concise_title: A short descriptive title under 60 characters.${needsConciseTitle ? "" : ' Set to null since the current title is already short enough.'}
-
-Current title: "${title ?? "Untitled"}"
 
 Conversation:
 ${transcript}`,
-        },
-      ],
-    });
+            },
+          ],
+        })
+        .then((response) => {
+          const text =
+            response.content[0].type === "text"
+              ? response.content[0].text
+              : "";
+          const jsonMatch = text.match(/\{[\s\S]*\}/);
+          if (!jsonMatch) return [];
+          const parsed = JSON.parse(jsonMatch[0]) as {
+            key_points?: string[];
+          };
+          return Array.isArray(parsed.key_points)
+            ? parsed.key_points
+                .filter((p): p is string => typeof p === "string")
+                .map((p) => p.slice(0, 100))
+                .slice(0, 4)
+            : [];
+        })
+        .catch(() => [] as string[]),
+      verifyTitle(title, messages).catch(() => null),
+    ]);
 
-    const text =
-      response.content[0].type === "text" ? response.content[0].text : "";
-
-    // Extract JSON from response (handle markdown code blocks)
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return { keyPoints: [], conciseTitle: null };
-    }
-
-    const parsed = JSON.parse(jsonMatch[0]) as {
-      key_points?: string[];
-      concise_title?: string | null;
-    };
-
-    const keyPoints = Array.isArray(parsed.key_points)
-      ? parsed.key_points
-          .filter((p): p is string => typeof p === "string")
-          .map((p) => p.slice(0, 100))
-          .slice(0, 4)
-      : [];
-
-    const conciseTitle =
-      needsConciseTitle &&
-      typeof parsed.concise_title === "string" &&
-      parsed.concise_title.length > 0
-        ? parsed.concise_title.slice(0, 60)
-        : null;
-
-    return { keyPoints, conciseTitle };
+    return { keyPoints: keyPointsResult, improvedTitle: verifiedTitle };
   } catch {
-    return { keyPoints: [], conciseTitle: null };
+    return { keyPoints: [], improvedTitle: null };
   }
 }
