@@ -8,6 +8,7 @@ import { CopyButton } from "@/app/components/copy-button";
 import { SearchResults } from "@/app/components/search-results";
 import { AssistantSearchTrigger } from "@/app/components/assistant";
 import { useThreadSearch } from "@/lib/search/use-thread-search";
+import type { ConversationSnapshot } from "@/lib/thread-snapshot";
 
 interface ThreadItem {
   id: string;
@@ -21,6 +22,7 @@ interface ThreadItem {
   messageCount: number;
   sessionTs: string;
   createdAt: string;
+  conversationSnapshot: ConversationSnapshot;
 }
 
 interface ThreadsResponse {
@@ -144,6 +146,7 @@ export function DashboardClient({
                     visibility={thread.visibility}
                     messageCount={thread.messageCount}
                     sessionTs={thread.sessionTs}
+                    conversationSnapshot={thread.conversationSnapshot}
                     showVisibility
                   />
                 ))}

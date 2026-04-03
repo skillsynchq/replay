@@ -1,4 +1,8 @@
 import Link from "next/link";
+import type {
+  ConversationSnapshot,
+  ConversationSnapshotKind,
+} from "@/lib/thread-snapshot";
 import { AgentMark } from "./icons";
 import { VisibilityBadge } from "./visibility-badge";
 
@@ -13,6 +17,58 @@ interface ThreadCardProps {
   messageCount: number;
   sessionTs: string;
   showVisibility?: boolean;
+  conversationSnapshot?: ConversationSnapshot;
+}
+
+const SNAPSHOT_COLORS: Record<ConversationSnapshotKind, string> = {
+  user: "rgb(249 115 22 / 0.82)",
+  assistant: "rgb(243 196 141 / 0.26)",
+  tool: "var(--surface-raised)",
+};
+
+function snapshotLabel(snapshot: ConversationSnapshot): string {
+  const totals = { user: 0, assistant: 0, tool: 0 };
+  let totalWeight = 0;
+
+  for (const segment of snapshot) {
+    totals[segment.kind] += segment.weight;
+    totalWeight += segment.weight;
+  }
+
+  if (totalWeight === 0) return "Conversation snapshot";
+
+  return `Conversation snapshot. User ${Math.round((totals.user / totalWeight) * 100)}%. Assistant ${Math.round((totals.assistant / totalWeight) * 100)}%. Tool ${Math.round((totals.tool / totalWeight) * 100)}%.`;
+}
+
+function ConversationSnapshotRail({
+  snapshot,
+}: {
+  snapshot: ConversationSnapshot;
+}) {
+  const label = snapshotLabel(snapshot);
+
+  return (
+    <div className="flex shrink-0 items-stretch" title={label}>
+      <div
+        aria-hidden="true"
+        className="flex min-h-[72px] w-1.5 overflow-hidden rounded-none bg-surface-raised ring-1 ring-inset ring-border/80"
+      >
+        <div className="flex h-full w-full flex-col">
+          {snapshot.map((segment, index) => (
+            <div
+              key={`${segment.kind}-${index}`}
+              className="w-full rounded-none"
+              style={{
+                flex: `${segment.weight} 1 0%`,
+                backgroundColor: SNAPSHOT_COLORS[segment.kind],
+              }}
+            />
+          ))}
+        </div>
+      </div>
+      <span className="sr-only">{label}</span>
+    </div>
+  );
 }
 
 function formatRelativeTime(dateStr: string): string {
@@ -46,14 +102,15 @@ export function ThreadCard({
   messageCount,
   sessionTs,
   showVisibility = false,
+  conversationSnapshot,
 }: ThreadCardProps) {
   return (
     <Link
       href={`/t/${slug}`}
       className="group block rounded-[4px] border border-border px-5 py-4 transition-colors duration-150 hover:border-border-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
+      <div className="flex items-stretch justify-between gap-4">
+        <div className="min-w-0 flex-1 py-0.5">
           <p className="truncate text-[14px] font-medium text-fg group-hover:text-accent transition-colors duration-150">
             {title ?? "Untitled thread"}
           </p>
@@ -86,9 +143,18 @@ export function ThreadCard({
             </ul>
           )}
         </div>
-        {showVisibility && visibility && (
-          <VisibilityBadge visibility={visibility} />
-        )}
+        {(showVisibility && visibility) || conversationSnapshot ? (
+          <div className="flex shrink-0 items-stretch gap-3">
+            {showVisibility && visibility && (
+              <div className="self-start pt-0.5">
+                <VisibilityBadge visibility={visibility} />
+              </div>
+            )}
+            {conversationSnapshot && (
+              <ConversationSnapshotRail snapshot={conversationSnapshot} />
+            )}
+          </div>
+        ) : null}
       </div>
     </Link>
   );
