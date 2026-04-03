@@ -1,0 +1,87 @@
+---
+title: "Publish your first session"
+description: "Install the CLI, authenticate in the browser, and upload a transcript from your machine."
+navTitle: "Quickstart"
+order: 1
+---
+
+Replay is built around the CLI publishing flow. If you want to share a session, this is the path that matters: install the CLI, sign in once, then upload the session you want to publish.
+
+> Replay has full support for Claude Code transcripts. Codex uploads are available in beta.
+
+## Install the CLI
+
+If you do not have the CLI yet, install it first:
+
+```bash
+curl -sSL https://install.replay.md | sh
+```
+
+Once the install finishes, confirm the binary is available:
+
+```bash
+replay --help
+```
+
+## Sign in
+
+Uploads require an authenticated Replay account.
+
+```bash
+replay login
+```
+
+That command opens your browser, sends you through the Replay sign-in flow, then returns control to the CLI once authentication completes.
+
+If you want to confirm the current account before uploading, run:
+
+```bash
+replay whoami
+```
+
+## Upload a session
+
+Use `replay upload` with either a session ID or the exact session title:
+
+```bash
+replay upload <session-id-or-title>
+```
+
+Example with a session ID:
+
+```bash
+replay upload 7f0a6c47-0a63-4af6-88c3-2a9156a0f2fd
+```
+
+Example with a title:
+
+```bash
+replay upload "ship docs layout"
+```
+
+On the first successful upload, Replay creates a private thread and prints the share URL in your terminal.
+
+## What gets published
+
+When you upload, Replay sends the session transcript and its metadata to the server:
+
+- Transcript messages
+- Timestamps
+- Agent type
+- Session title when available
+- Project path when available
+- Git branch when available
+- CLI version when available
+- Model metadata when available
+
+## What happens on later uploads
+
+Replay treats the same local session as the same published thread.
+
+If you upload that session again later, Replay updates the existing thread instead of creating a second URL.
+
+## Next steps
+
+- Read [/docs/upload-command](/docs/upload-command) for the exact command behavior.
+- Read [/docs/transcript-support](/docs/transcript-support) for Claude Code and Codex coverage details.
+- Read [/docs/troubleshooting](/docs/troubleshooting) if an upload fails.

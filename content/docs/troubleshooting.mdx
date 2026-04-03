@@ -1,0 +1,60 @@
+---
+title: "Troubleshooting uploads"
+description: "Common upload failures and the fastest way to recover from them."
+navTitle: "Troubleshooting"
+order: 4
+---
+
+Most upload failures come down to authentication, session lookup, or an outdated CLI.
+
+## Not logged in
+
+If you see a message telling you to run `replay login` first, authenticate and retry:
+
+```bash
+replay login
+replay upload <session-id-or-title>
+```
+
+If you think you are already signed in, verify the active account:
+
+```bash
+replay whoami
+```
+
+## Session not found
+
+`replay upload` only matches:
+
+- The exact session ID
+- The exact session title
+
+If you passed a title, double-check spelling and shell quoting.
+
+## Session expired or invalid
+
+If `replay whoami` reports that your session is expired or invalid, sign in again:
+
+```bash
+replay login
+```
+
+## Login timed out
+
+The browser-based login flow waits for a local callback. If it times out, run `replay login` again and complete the browser step before retrying.
+
+## Session has no exportable messages
+
+Replay will reject uploads for sessions that do not contain exportable messages.
+
+If that happens, choose a different session and retry.
+
+## CLI is outdated
+
+Replay may reject uploads from old CLI versions and ask you to update.
+
+If that happens, install the latest CLI version and rerun the upload command.
+
+## Codex-specific caveat
+
+Codex support is still in beta. If a Codex upload behaves unexpectedly, retry with the latest CLI and verify the transcript file still exists in `~/.codex/sessions/`.

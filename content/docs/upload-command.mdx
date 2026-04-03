@@ -1,0 +1,84 @@
+---
+title: "The upload command"
+description: "How `replay upload` resolves a session, what it sends, and what Replay returns."
+navTitle: "Upload Command"
+order: 2
+---
+
+`replay upload` is the command that publishes a local transcript to Replay.
+
+## Command shape
+
+```bash
+replay upload <session-id-or-title>
+```
+
+The argument can be:
+
+- A session ID
+- The exact session title
+
+If your title contains spaces, quote it in the shell:
+
+```bash
+replay upload "fix billing webhook retries"
+```
+
+## How Replay finds the session
+
+When you run `replay upload`, the CLI scans the local transcript sources it knows about, then looks for a session whose ID exactly matches the argument or whose title exactly matches the argument.
+
+If there is no exact match, the upload fails with `Session '<value>' not found`.
+
+## What Replay sends
+
+Replay uploads the transcript plus the metadata it can recover locally:
+
+- Session ID
+- Agent identifier
+- Session timestamp
+- Transcript messages
+- Project path when present
+- Git branch when present
+- Title when present
+- CLI version when present
+- Model metadata when present
+
+## First upload behavior
+
+On a new upload, Replay creates a thread and returns a share URL.
+
+New uploads are private by default. You can change visibility from the thread page after the upload completes.
+
+## Re-upload behavior
+
+If the same session was already uploaded by the same account, Replay updates the existing thread instead of minting a second copy.
+
+That means the URL stays stable as your local session evolves.
+
+## Authentication requirement
+
+If you are not logged in, `replay upload` fails immediately.
+
+Use:
+
+```bash
+replay login
+```
+
+You can confirm the current account with:
+
+```bash
+replay whoami
+```
+
+## Practical workflow
+
+The normal publishing loop looks like this:
+
+```bash
+replay login
+replay upload <session-id-or-title>
+```
+
+Then copy the returned URL and share it.
