@@ -1,6 +1,6 @@
 import { CopyButton } from "./copy-button";
 
-const INSTALL_COMMAND = "curl -sSf https://install.replay.md | sh";
+const INSTALL_COMMAND = "curl -sSL https://install.replay.md | sh";
 
 export function Hero() {
   return (

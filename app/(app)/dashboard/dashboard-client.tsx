@@ -32,7 +32,7 @@ interface ThreadsResponse {
   limit: number;
 }
 
-const INSTALL_COMMAND = "curl -sSf https://install.replay.md | sh";
+const INSTALL_COMMAND = "curl -sSL https://install.replay.md | sh";
 
 function buildPageHref(page: number, query: string) {
   const params = new URLSearchParams();
