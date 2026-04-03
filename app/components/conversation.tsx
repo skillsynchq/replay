@@ -229,11 +229,13 @@ export function PreviewConversation({
   children,
   footer,
   className,
+  fade,
 }: {
   header?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
   className?: string;
+  fade?: boolean;
 }) {
   return (
     <Root
@@ -243,7 +245,14 @@ export function PreviewConversation({
       )}
     >
       {header}
-      <Messages className="px-5 py-2">{children}</Messages>
+      <div className={cx("relative", fade && "min-h-0 flex-1")}>
+        <Messages className={cx("px-5 py-2", fade && "h-full overflow-hidden")}>
+          {children}
+        </Messages>
+        {fade && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-bg to-transparent" />
+        )}
+      </div>
       {footer}
     </Root>
   );

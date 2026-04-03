@@ -25,7 +25,7 @@ function flattenText(node: ReactNode): string {
 function slugify(value: string) {
   return value
     .toLowerCase()
-    .replace(/[`"'’]/g, "")
+    .replace(/[`"'']/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
@@ -106,13 +106,13 @@ const components: Components = {
     }
 
     return (
-      <code className="rounded-[3px] border border-border bg-surface px-1.5 py-0.5 font-mono text-[12px] text-fg">
+      <code className="rounded-[2px] border border-border bg-surface-raised px-1.5 py-0.5 font-mono text-[12px] text-fg">
         {children}
       </code>
     );
   },
   pre: ({ children }) => (
-    <pre className="mt-4 overflow-x-auto rounded-[6px] border border-border bg-[#141110] px-4 py-3 font-mono text-[12px] leading-6 text-fg shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
+    <pre className="mt-4 overflow-x-auto rounded-[4px] border border-border bg-bg px-4 py-3 font-mono text-[12px] leading-6 text-fg">
       {children}
     </pre>
   ),
@@ -130,13 +130,13 @@ const components: Components = {
     <li className="pl-1 leading-7">{children}</li>
   ),
   blockquote: ({ children }) => (
-    <blockquote className="mt-5 rounded-[6px] border border-border bg-surface/70 px-4 py-3 text-[13px] leading-6 text-fg-muted">
+    <blockquote className="mt-5 rounded-[4px] border border-border bg-surface px-4 py-3 text-[13px] leading-6 text-fg-muted">
       {children}
     </blockquote>
   ),
   hr: () => <hr className="mt-8 border-border" />,
   table: ({ children }) => (
-    <div className="mt-5 overflow-x-auto rounded-[6px] border border-border">
+    <div className="mt-5 overflow-x-auto rounded-[4px] border border-border">
       <table className="w-full border-collapse text-left text-[13px]">
         {children}
       </table>

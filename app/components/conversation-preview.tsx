@@ -1,4 +1,4 @@
-import { ScrollReveal } from "./scroll-reveal";
+import { PageReveal } from "./page-reveal";
 import { ClaudeMark } from "./icons";
 import {
   Conversation,
@@ -23,19 +23,17 @@ const diffLines: ConversationDiffLine[] = [
   { type: "add", num: [null, 21], code: "    maxAge: SESSION_MAX_AGE," },
   { type: "add", num: [null, 22], code: "    refresh: true," },
   { type: "add", num: [null, 23], code: "  });" },
-  { type: "add", num: [null, 24], code: "" },
-  { type: "add", num: [null, 25], code: "  return result;" },
-  { type: "context", num: [23, 26], code: "}" },
 ];
 
 export function ConversationPreview() {
   return (
-    <section className="px-6 py-28">
-      <div className="mx-auto max-w-3xl">
-        <ScrollReveal>
-          <PreviewConversation
-            header={
-              <Conversation.Header>
+    <div className="flex min-h-0 flex-1 flex-col max-[899px]:max-h-[50vh]">
+      <PageReveal delay={160} className="flex min-h-0 flex-1 flex-col">
+        <PreviewConversation
+          className="flex min-h-0 flex-1 flex-col"
+          fade
+          header={
+            <Conversation.Header>
               <h3 className="text-[16px] font-medium text-fg">
                 Refactor auth middleware for session validation
               </h3>
@@ -59,18 +57,6 @@ export function ConversationPreview() {
                   </span>
                 </Conversation.MetaItem>
 
-                <Conversation.MetaItem label="When">
-                  <span className="font-mono text-[12px] text-fg-muted">
-                    3 hours ago
-                  </span>
-                </Conversation.MetaItem>
-
-                <Conversation.MetaItem label="Prompts">
-                  <span className="font-mono text-[12px] text-fg-muted">
-                    4
-                  </span>
-                </Conversation.MetaItem>
-
                 <Conversation.MetaItem label="Diff">
                   <span className="font-mono text-[12px]">
                     <span className="text-diff-add">+9</span>
@@ -81,56 +67,54 @@ export function ConversationPreview() {
                   </span>
                 </Conversation.MetaItem>
               </Conversation.MetaGrid>
-              </Conversation.Header>
-            }
-          >
-              <Conversation.UserMessage>
-                Refactor the auth middleware to use the new session validation
-              </Conversation.UserMessage>
+            </Conversation.Header>
+          }
+        >
+          <Conversation.UserMessage>
+            Refactor the auth middleware to use the new session validation
+          </Conversation.UserMessage>
 
-              <Conversation.AssistantMessage timestamp="2m ago">
-                <Conversation.ToolRow label="Read src/lib/auth.ts" />
-                <p className="text-[13px] leading-relaxed text-fg-muted">
-                  I&apos;ll refactor <Conversation.InlineCode>validateSession</Conversation.InlineCode> to
-                  use the new <Conversation.InlineCode>verifySessionToken</Conversation.InlineCode> helper.
-                  This extracts the bearer token, validates expiry, and optionally
-                  refreshes the session.
-                </p>
-                <Conversation.Diff lines={diffLines} filePath="src/lib/auth.ts" />
-              </Conversation.AssistantMessage>
-
-              <Conversation.UserMessage>
-                Looks good, but extract the config into a separate file
-              </Conversation.UserMessage>
-
-              <div className="relative">
-                <Conversation.AssistantMessage timestamp="1m ago">
-                  <p className="text-[13px] leading-relaxed text-fg-muted">
-                    I&apos;ll move the session configuration to{" "}
-                    <Conversation.InlineCode>src/lib/auth.config.ts</Conversation.InlineCode> and export
-                    the constants from there. This keeps the validation logic
-                    clean and makes the config easy to adjust per environment...
-                  </p>
-                </Conversation.AssistantMessage>
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-bg to-transparent" />
-              </div>
-          </PreviewConversation>
-        </ScrollReveal>
-
-        <ScrollReveal stagger={80}>
-          <div className="mt-8 flex flex-col items-center gap-2">
-            <p className="text-[13px] text-fg-ghost">
-              This is what sharing looks like.
+          <Conversation.AssistantMessage timestamp="2m ago">
+            <Conversation.ToolRow label="Read src/lib/auth.ts" />
+            <p className="text-[13px] leading-relaxed text-fg-muted">
+              I&apos;ll refactor <Conversation.InlineCode>validateSession</Conversation.InlineCode> to
+              use the new <Conversation.InlineCode>verifySessionToken</Conversation.InlineCode> helper.
+              This extracts the bearer token, validates expiry, and optionally
+              refreshes the session.
             </p>
-            <a
-              href="#"
-              className="text-[13px] text-accent transition-colors duration-150 hover:text-accent-hover"
-            >
-              Explore public threads →
-            </a>
+            <Conversation.Diff lines={diffLines} filePath="src/lib/auth.ts" />
+          </Conversation.AssistantMessage>
+
+          <Conversation.UserMessage>
+            Looks good, but extract the config into a separate file
+          </Conversation.UserMessage>
+
+          <div className="relative">
+            <Conversation.AssistantMessage timestamp="1m ago">
+              <p className="text-[13px] leading-relaxed text-fg-muted">
+                I&apos;ll move the session configuration to{" "}
+                <Conversation.InlineCode>src/lib/auth.config.ts</Conversation.InlineCode> and export
+                the constants from there. This keeps the validation logic
+                clean and makes the config easy to adjust per environment...
+              </p>
+            </Conversation.AssistantMessage>
           </div>
-        </ScrollReveal>
-      </div>
-    </section>
+        </PreviewConversation>
+      </PageReveal>
+
+      <PageReveal delay={400}>
+        <div className="mt-3 flex items-center gap-2 text-[13px]">
+          <span className="text-fg-ghost">
+            This is what sharing looks like.
+          </span>
+          <a
+            href="#"
+            className="text-accent transition-colors duration-150 hover:text-accent-hover"
+          >
+            Explore public threads →
+          </a>
+        </div>
+      </PageReveal>
+    </div>
   );
 }

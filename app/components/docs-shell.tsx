@@ -20,10 +20,10 @@ function SectionLink({
   return (
     <Link
       href={href}
-      className={`inline-flex rounded-full border px-3 py-2 text-[13px] transition-colors duration-150 ${
+      className={`inline-flex rounded-[4px] border px-3 py-2 text-[13px] transition-colors duration-150 ${
         active
           ? "border-border bg-surface-raised text-fg"
-          : "border-transparent text-fg-muted hover:border-border hover:bg-surface hover:text-fg"
+          : "border-transparent text-fg-muted hover:border-border hover:text-fg"
       }`}
     >
       {label}
@@ -35,7 +35,7 @@ export function DocsShell({ docs, doc }: DocsShellProps) {
   return (
     <section className="px-6 pb-24 pt-28">
       <div className="mx-auto max-w-6xl">
-        <div className="rounded-[10px] border border-border bg-surface/55 px-6 py-8 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] sm:px-8">
+        <div className="rounded-[4px] border border-border bg-surface px-6 py-8 sm:px-8">
           <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-accent">
             <span>Docs</span>
             <ChevronRight className="size-3" />
@@ -53,7 +53,7 @@ export function DocsShell({ docs, doc }: DocsShellProps) {
           </p>
         </div>
 
-        <div className="mt-6 rounded-[10px] border border-border bg-surface/40 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
+        <div className="mt-6 rounded-[4px] border border-border bg-surface p-3">
           <div className="px-3 pb-3 font-mono text-[11px] uppercase tracking-[0.18em] text-fg-ghost">
             Navigate
           </div>
@@ -70,12 +70,12 @@ export function DocsShell({ docs, doc }: DocsShellProps) {
         </div>
 
         <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
-          <article className="min-w-0 rounded-[10px] border border-border bg-[#0f0d0c]/90 px-6 py-8 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] sm:px-8">
+          <article className="min-w-0 rounded-[4px] border border-border bg-surface px-6 py-8 sm:px-8">
             <DocsMarkdown content={doc.content} />
           </article>
 
           <aside className="space-y-4 lg:sticky lg:top-28 lg:self-start">
-            <div className="rounded-[8px] border border-border bg-surface/55 p-4">
+            <div className="rounded-[4px] border border-border bg-surface p-4">
               <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-fg-ghost">
                 On this page
               </div>
@@ -96,11 +96,11 @@ export function DocsShell({ docs, doc }: DocsShellProps) {
               </nav>
             </div>
 
-            <div className="rounded-[8px] border border-border bg-surface/55 p-4">
+            <div className="rounded-[4px] border border-border bg-surface p-4">
               <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-fg-ghost">
                 Core command
               </div>
-              <pre className="mt-3 overflow-x-auto rounded-[6px] border border-accent/30 bg-[#171311] px-4 py-3 font-mono text-[11px] leading-6 text-fg shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+              <pre className="mt-3 overflow-x-auto rounded-[4px] border border-accent/30 bg-bg px-4 py-3 font-mono text-[11px] leading-6 text-fg">
                 <code>replay upload &lt;session-id-or-title&gt;</code>
               </pre>
             </div>
