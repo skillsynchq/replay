@@ -146,12 +146,26 @@ export function ThreadCard({
               </ul>
             )}
           </div>
-          {(showVisibility && visibility) || conversationSnapshot ? (
+          {(showVisibility && visibility) || conversationSnapshot || onDelete ? (
             <div className="flex shrink-0 items-stretch gap-3">
               {showVisibility && visibility && (
                 <div className="self-start pt-0.5">
                   <VisibilityBadge visibility={visibility} />
                 </div>
+              )}
+              {onDelete && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onDelete(slug);
+                  }}
+                  className="self-start rounded-[4px] p-1.5 text-fg-ghost opacity-0 transition-all duration-150 hover:bg-surface-raised hover:text-red-400 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+                  aria-label={`Delete "${title ?? "Untitled thread"}"`}
+                >
+                  <TrashIcon className="size-3.5" />
+                </button>
               )}
               {conversationSnapshot && (
                 <ConversationSnapshotRail snapshot={conversationSnapshot} />
@@ -160,19 +174,6 @@ export function ThreadCard({
           ) : null}
         </div>
       </Link>
-      {onDelete && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(slug);
-          }}
-          className="absolute right-2 top-2 rounded-[4px] p-1.5 text-fg-ghost opacity-0 transition-all duration-150 hover:bg-surface-raised hover:text-red-400 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
-          aria-label={`Delete "${title ?? "Untitled thread"}"`}
-        >
-          <TrashIcon className="size-3.5" />
-        </button>
-      )}
     </div>
   );
 }
