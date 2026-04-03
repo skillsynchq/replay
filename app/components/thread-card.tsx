@@ -3,7 +3,7 @@ import type {
   ConversationSnapshot,
   ConversationSnapshotKind,
 } from "@/lib/thread-snapshot";
-import { AgentMark } from "./icons";
+import { AgentMark, TrashIcon } from "./icons";
 import { VisibilityBadge } from "./visibility-badge";
 
 interface ThreadCardProps {
@@ -18,6 +18,7 @@ interface ThreadCardProps {
   sessionTs: string;
   showVisibility?: boolean;
   conversationSnapshot?: ConversationSnapshot;
+  onDelete?: (slug: string) => void;
 }
 
 const SNAPSHOT_COLORS: Record<ConversationSnapshotKind, string> = {
@@ -103,59 +104,75 @@ export function ThreadCard({
   sessionTs,
   showVisibility = false,
   conversationSnapshot,
+  onDelete,
 }: ThreadCardProps) {
   return (
-    <Link
-      href={`/t/${slug}`}
-      className="group block rounded-[4px] border border-border px-5 py-4 transition-colors duration-150 hover:border-border-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
-    >
-      <div className="flex items-stretch justify-between gap-4">
-        <div className="min-w-0 flex-1 py-0.5">
-          <p className="truncate text-[14px] font-medium text-fg group-hover:text-accent transition-colors duration-150">
-            {title ?? "Untitled thread"}
-          </p>
-          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
-            <span className="flex items-center gap-1 text-[12px] text-fg-ghost">
-              <AgentMark agent={agent} className="size-3 text-fg-faint" />
-              {agentLabel(agent)}
-            </span>
-            {model && (
-              <span className="text-[12px] text-fg-ghost">{model}</span>
+    <div className="group relative">
+      <Link
+        href={`/t/${slug}`}
+        className="block rounded-[4px] border border-border px-5 py-4 transition-colors duration-150 hover:border-border-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+      >
+        <div className="flex items-stretch justify-between gap-4">
+          <div className="min-w-0 flex-1 py-0.5">
+            <p className="truncate text-[14px] font-medium text-fg group-hover:text-accent transition-colors duration-150">
+              {title ?? "Untitled thread"}
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+              <span className="flex items-center gap-1 text-[12px] text-fg-ghost">
+                <AgentMark agent={agent} className="size-3 text-fg-faint" />
+                {agentLabel(agent)}
+              </span>
+              {model && (
+                <span className="text-[12px] text-fg-ghost">{model}</span>
+              )}
+              <span className="font-mono text-[11px] text-fg-faint">
+                {messageCount} messages
+              </span>
+              <span className="font-mono text-[11px] text-fg-faint">
+                {formatRelativeTime(sessionTs)}
+              </span>
+            </div>
+            {keyPoints && keyPoints.length > 0 && (
+              <ul className="mt-2 space-y-0.5">
+                {keyPoints.map((point, i) => (
+                  <li
+                    key={i}
+                    className="text-[12px] text-fg-faint leading-tight truncate"
+                  >
+                    <span className="text-fg-ghost mr-1.5">·</span>
+                    {point}
+                  </li>
+                ))}
+              </ul>
             )}
-            <span className="font-mono text-[11px] text-fg-faint">
-              {messageCount} messages
-            </span>
-            <span className="font-mono text-[11px] text-fg-faint">
-              {formatRelativeTime(sessionTs)}
-            </span>
           </div>
-          {keyPoints && keyPoints.length > 0 && (
-            <ul className="mt-2 space-y-0.5">
-              {keyPoints.map((point, i) => (
-                <li
-                  key={i}
-                  className="text-[12px] text-fg-faint leading-tight truncate"
-                >
-                  <span className="text-fg-ghost mr-1.5">·</span>
-                  {point}
-                </li>
-              ))}
-            </ul>
-          )}
+          {(showVisibility && visibility) || conversationSnapshot ? (
+            <div className="flex shrink-0 items-stretch gap-3">
+              {showVisibility && visibility && (
+                <div className="self-start pt-0.5">
+                  <VisibilityBadge visibility={visibility} />
+                </div>
+              )}
+              {conversationSnapshot && (
+                <ConversationSnapshotRail snapshot={conversationSnapshot} />
+              )}
+            </div>
+          ) : null}
         </div>
-        {(showVisibility && visibility) || conversationSnapshot ? (
-          <div className="flex shrink-0 items-stretch gap-3">
-            {showVisibility && visibility && (
-              <div className="self-start pt-0.5">
-                <VisibilityBadge visibility={visibility} />
-              </div>
-            )}
-            {conversationSnapshot && (
-              <ConversationSnapshotRail snapshot={conversationSnapshot} />
-            )}
-          </div>
-        ) : null}
-      </div>
-    </Link>
+      </Link>
+      {onDelete && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(slug);
+          }}
+          className="absolute right-2 top-2 rounded-[4px] p-1.5 text-fg-ghost opacity-0 transition-all duration-150 hover:bg-surface-raised hover:text-red-400 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+          aria-label={`Delete "${title ?? "Untitled thread"}"`}
+        >
+          <TrashIcon className="size-3.5" />
+        </button>
+      )}
+    </div>
   );
 }

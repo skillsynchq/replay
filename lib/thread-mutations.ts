@@ -2,6 +2,19 @@ type Result<T = unknown> =
   | { ok: true; data: T }
   | { ok: false; error: string };
 
+export async function deleteThread(slug: string): Promise<Result> {
+  try {
+    const res = await fetch(`/api/threads/${slug}`, { method: "DELETE" });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      return { ok: false, error: body.error ?? "Something went wrong" };
+    }
+    return { ok: true, data: null };
+  } catch {
+    return { ok: false, error: "Network error" };
+  }
+}
+
 export async function patchThread(
   slug: string,
   data: Record<string, unknown>

@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ThreadCard } from "@/app/components/thread-card";
 import { PageReveal } from "@/app/components/page-reveal";
 import { CopyButton } from "@/app/components/copy-button";
 import { SearchResults } from "@/app/components/search-results";
 import { AssistantSearchTrigger } from "@/app/components/assistant";
 import { useThreadSearch } from "@/lib/search/use-thread-search";
+import { deleteThread } from "@/lib/thread-mutations";
 import type { ConversationSnapshot } from "@/lib/thread-snapshot";
 
 interface ThreadItem {
@@ -51,7 +52,26 @@ export function DashboardClient({
   initialQuery: string;
 }) {
   const [query, setQuery] = useState(initialQuery);
+  const [deletedSlugs, setDeletedSlugs] = useState<Set<string>>(new Set());
   const { results, syncing, isSearching } = useThreadSearch(query);
+
+  const handleDelete = useCallback(async (slug: string) => {
+    const thread = initialData.threads.find((t) => t.slug === slug);
+    const confirmed = window.confirm(
+      `Delete "${thread?.title ?? "Untitled thread"}"? This cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    setDeletedSlugs((prev) => new Set(prev).add(slug));
+    const result = await deleteThread(slug);
+    if (!result.ok) {
+      setDeletedSlugs((prev) => {
+        const next = new Set(prev);
+        next.delete(slug);
+        return next;
+      });
+    }
+  }, [initialData.threads]);
 
   useEffect(() => {
     setQuery(initialQuery);
@@ -134,7 +154,9 @@ export function DashboardClient({
           ) : (
             <>
               <div className="space-y-3">
-                {initialData.threads.map((thread) => (
+                {initialData.threads
+                  .filter((t) => !deletedSlugs.has(t.slug))
+                  .map((thread) => (
                   <ThreadCard
                     key={thread.id}
                     slug={thread.slug}
@@ -148,6 +170,7 @@ export function DashboardClient({
                     sessionTs={thread.sessionTs}
                     conversationSnapshot={thread.conversationSnapshot}
                     showVisibility
+                    onDelete={handleDelete}
                   />
                 ))}
               </div>

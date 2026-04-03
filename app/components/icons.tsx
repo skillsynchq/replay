@@ -220,6 +220,24 @@ export function PencilIcon({ className }: IconProps) {
   );
 }
 
+export function TrashIcon({ className }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M3 4.5h10M6.5 3h3M5.5 4.5v7.5a1 1 0 001 1h3a1 1 0 001-1V4.5" />
+      <path d="M7 7v3M9 7v3" />
+    </svg>
+  );
+}
+
 export function XIcon({ className }: IconProps) {
   return (
     <svg
