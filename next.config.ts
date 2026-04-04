@@ -7,6 +7,23 @@ const nextConfig: NextConfig = {
       { hostname: "lh3.googleusercontent.com" },
     ],
   },
+  async rewrites() {
+    return {
+      beforeFiles: [
+        {
+          source: "/t/:slug",
+          has: [
+            {
+              type: "header",
+              key: "accept",
+              value: "(.*)text/markdown(.*)",
+            },
+          ],
+          destination: "/t/:slug/llms.txt",
+        },
+      ],
+    };
+  },
 };
 
 export default nextConfig;
