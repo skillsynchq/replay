@@ -86,16 +86,15 @@ function renderContentBlocks(blocks: ContentBlock[]): string {
 }
 
 function renderMessage(
-  role: string,
   content: string,
-  contentBlocks: Record<string, unknown>[] | null,
+  contentBlocks: ContentBlock[] | null,
   redacted: boolean
 ): string {
   if (redacted) return `*[redacted]*`;
 
   // If structured content blocks exist, use them
   if (contentBlocks && contentBlocks.length > 0) {
-    const rendered = renderContentBlocks(contentBlocks as ContentBlock[]);
+    const rendered = renderContentBlocks(contentBlocks);
     if (rendered.trim()) return rendered;
   }
 
@@ -203,11 +202,11 @@ export async function GET(
     lines.push(heading);
     lines.push("");
 
-    const content = m.redacted && !isOwner ? "" : m.content;
-    const contentBlocks =
-      m.redacted && !isOwner
-        ? null
-        : ((m.contentBlocks ?? null) as Record<string, unknown>[] | null);
+    const isRedacted = m.redacted && !isOwner;
+    const content = isRedacted ? "" : m.content;
+    const contentBlocks: ContentBlock[] | null = isRedacted
+      ? null
+      : (m.contentBlocks as ContentBlock[] | null) ?? null;
 
     // Apply path processing
     const processed = processor
@@ -215,10 +214,9 @@ export async function GET(
       : { content, contentBlocks };
 
     const rendered = renderMessage(
-      m.role,
       processed.content,
       processed.contentBlocks,
-      m.redacted && !isOwner
+      isRedacted
     );
 
     lines.push(rendered);
