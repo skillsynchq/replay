@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import Image from "next/image";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { thread } from "@/lib/db/schema";
+import { thread, threadStar } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
 import { Nav } from "@/app/components/nav";
 import { Assistant } from "@/app/components/assistant";
@@ -40,6 +40,7 @@ export default async function ProfilePage({
       keyPoints: thread.keyPoints,
       agent: thread.agent,
       model: thread.model,
+      starCount: thread.starCount,
       messageCount: thread.messageCount,
       sessionTs: thread.sessionTs,
       createdAt: thread.createdAt,
@@ -49,12 +50,30 @@ export default async function ProfilePage({
     .orderBy(desc(thread.createdAt))
     .limit(50);
 
-  // Check if visitor is authenticated (for AI button)
+  // Check if visitor is authenticated (for AI button + stars)
   let isAuthenticated = false;
+  let starredSlugs = new Set<string>();
   try {
     const headersList = await headers();
     const session = await auth.api.getSession({ headers: headersList });
     isAuthenticated = !!session;
+
+    if (session && threads.length > 0) {
+      const threadIds = threads.map((t) => t.id);
+      const stars = await db
+        .select({ threadId: threadStar.threadId })
+        .from(threadStar)
+        .where(
+          and(
+            eq(threadStar.userId, session.user.id),
+            inArray(threadStar.threadId, threadIds)
+          )
+        );
+      const starredIds = new Set(stars.map((s) => s.threadId));
+      starredSlugs = new Set(
+        threads.filter((t) => starredIds.has(t.id)).map((t) => t.slug)
+      );
+    }
   } catch {}
 
   return (
@@ -94,6 +113,7 @@ export default async function ProfilePage({
                 threads={threads.map((t) => ({
                   ...t,
                   sessionTs: t.sessionTs.toISOString(),
+                  starred: starredSlugs.has(t.slug),
                 }))}
                 profileName={user.name}
                 isAuthenticated={isAuthenticated}

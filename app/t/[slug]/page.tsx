@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { eq, asc, and, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { thread, message, threadShare } from "@/lib/db/schema";
+import { thread, message, threadShare, threadStar } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
 import { buildPipeline, processDeep } from "@/lib/thread-processors";
 import { headers } from "next/headers";
@@ -70,6 +70,21 @@ export default async function ThreadPage({
 
   const promptCount = messages.filter((m) => m.role === "user").length;
 
+  let starred = false;
+  if (userId) {
+    const stars = await db
+      .select({ id: threadStar.id })
+      .from(threadStar)
+      .where(
+        and(
+          eq(threadStar.threadId, threadRow.id),
+          eq(threadStar.userId, userId)
+        )
+      )
+      .limit(1);
+    starred = stars.length > 0;
+  }
+
   // Run content processors (path relativization, etc.) over all messages
   const processor = buildPipeline({ projectPath: threadRow.projectPath });
 
@@ -114,6 +129,9 @@ export default async function ThreadPage({
           owner={owner}
           promptCount={promptCount}
           isOwner={isOwner}
+          starCount={threadRow.starCount}
+          starred={starred}
+          isAuthenticated={!!userId}
         />
       </main>
       {isOwner && <Assistant />}

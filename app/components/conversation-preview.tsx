@@ -29,9 +29,17 @@ export function ConversationPreview() {
   return (
     <div className="flex min-h-0 flex-1 flex-col max-[899px]:max-h-[50vh]">
       <PageReveal delay={160} className="flex min-h-0 flex-1 flex-col">
-        <PreviewConversation
-          className="flex min-h-0 flex-1 flex-col"
-          fade
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[4px] border border-border transition-colors duration-150 hover:border-border-hover">
+          {/* Window chrome title bar */}
+          <div className="flex items-center gap-2 border-b border-border bg-surface-raised px-3.5 py-2.5">
+            <span className="size-[10px] rounded-full bg-[#ff5f57]" />
+            <span className="size-[10px] rounded-full bg-[#febc2e]" />
+            <span className="size-[10px] rounded-full bg-[#28c840]" />
+            <span className="ml-2 text-[11px] text-fg-ghost">replay.md — Example</span>
+          </div>
+          <PreviewConversation
+            className="flex min-h-0 flex-1 flex-col border-0 rounded-none"
+            fade
           header={
             <Conversation.Header>
               <h3 className="text-[16px] font-medium text-fg">
@@ -100,6 +108,7 @@ export function ConversationPreview() {
             </Conversation.AssistantMessage>
           </div>
         </PreviewConversation>
+        </div>
       </PageReveal>
 
       <PageReveal delay={400}>

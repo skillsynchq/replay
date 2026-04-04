@@ -1,9 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import type {
   ConversationSnapshot,
   ConversationSnapshotKind,
 } from "@/lib/thread-snapshot";
-import { AgentMark, TrashIcon } from "./icons";
+import { AgentMark, StarIcon, TrashIcon } from "./icons";
+import { StarButton } from "./star-button";
 import { VisibilityBadge } from "./visibility-badge";
 
 interface ThreadCardProps {
@@ -14,6 +17,9 @@ interface ThreadCardProps {
   agent: string;
   model: string | null;
   visibility?: string;
+  starCount?: number;
+  starred?: boolean;
+  isAuthenticated?: boolean;
   messageCount: number;
   sessionTs: string;
   showVisibility?: boolean;
@@ -99,6 +105,9 @@ export function ThreadCard({
   keyPoints,
   agent,
   model,
+  starCount,
+  starred,
+  isAuthenticated,
   visibility,
   messageCount,
   sessionTs,
@@ -106,6 +115,9 @@ export function ThreadCard({
   conversationSnapshot,
   onDelete,
 }: ThreadCardProps) {
+  const showInteractiveStar = isAuthenticated != null;
+  const showPassiveCount = !showInteractiveStar && starCount != null && starCount > 0;
+
   return (
     <div className="group relative">
       <Link
@@ -128,6 +140,12 @@ export function ThreadCard({
               <span className="font-mono text-[11px] text-fg-faint">
                 {messageCount} messages
               </span>
+              {showPassiveCount && (
+                <span className="flex items-center gap-0.5 font-mono text-[11px] text-fg-faint">
+                  <StarIcon className="size-3" filled />
+                  {starCount}
+                </span>
+              )}
               <span className="font-mono text-[11px] text-fg-faint">
                 {formatRelativeTime(sessionTs)}
               </span>
@@ -146,32 +164,46 @@ export function ThreadCard({
               </ul>
             )}
           </div>
-          {(showVisibility && visibility) || conversationSnapshot || onDelete ? (
-            <div className="flex shrink-0 items-stretch gap-3">
-              {showVisibility && visibility && (
-                <div className="self-start pt-0.5">
-                  <VisibilityBadge visibility={visibility} />
-                </div>
-              )}
-              {onDelete && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onDelete(slug);
-                  }}
-                  className="self-start rounded-[4px] p-1.5 text-fg-ghost opacity-0 transition-all duration-150 hover:bg-surface-raised hover:text-red-400 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
-                  aria-label={`Delete "${title ?? "Untitled thread"}"`}
-                >
-                  <TrashIcon className="size-3.5" />
-                </button>
-              )}
-              {conversationSnapshot && (
-                <ConversationSnapshotRail snapshot={conversationSnapshot} />
-              )}
-            </div>
-          ) : null}
+          <div className="flex shrink-0 items-stretch gap-3">
+            {showInteractiveStar && (
+              <div
+                className="self-start"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+              >
+                <StarButton
+                  slug={slug}
+                  initialStarred={starred ?? false}
+                  initialStarCount={starCount ?? 0}
+                  isAuthenticated={isAuthenticated ?? false}
+                />
+              </div>
+            )}
+            {showVisibility && visibility && (
+              <div className="self-start pt-0.5">
+                <VisibilityBadge visibility={visibility} />
+              </div>
+            )}
+            {onDelete && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onDelete(slug);
+                }}
+                className="self-start rounded-[4px] p-1.5 text-fg-ghost opacity-0 transition-all duration-150 hover:bg-surface-raised hover:text-red-400 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+                aria-label={`Delete "${title ?? "Untitled thread"}"`}
+              >
+                <TrashIcon className="size-3.5" />
+              </button>
+            )}
+            {conversationSnapshot && (
+              <ConversationSnapshotRail snapshot={conversationSnapshot} />
+            )}
+          </div>
         </div>
       </Link>
     </div>

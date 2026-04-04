@@ -16,6 +16,7 @@ import { TagEditor } from "@/app/components/tag-editor";
 import { PageReveal } from "@/app/components/page-reveal";
 import { ContentBlockRenderer } from "@/app/components/content-renderer";
 import { Markdown } from "@/app/components/markdown";
+import { StarButton } from "@/app/components/star-button";
 import { AssistantTrigger } from "@/app/components/assistant";
 import { ThreadConversation } from "@/app/components/conversation";
 import {
@@ -62,6 +63,9 @@ interface ThreadViewerProps {
   };
   promptCount: number;
   isOwner: boolean;
+  starCount: number;
+  starred: boolean;
+  isAuthenticated: boolean;
 }
 
 const MESSAGE_HASH_PATTERN = /^#m(\d+)(?:-m(\d+))?$/;
@@ -398,6 +402,9 @@ export function ThreadViewerClient({
   owner,
   promptCount,
   isOwner,
+  starCount,
+  starred,
+  isAuthenticated,
 }: ThreadViewerProps) {
   // Build tool_use_id → tool_result content map across all messages
   const toolResults = useMemo(() => {
@@ -719,11 +726,11 @@ export function ThreadViewerClient({
           slug={thread.slug}
           isOwner={isOwner}
         />
-        <p className="mt-2 text-[13px] text-fg-muted">
-          {owner.name}
+        <div className="mt-2 flex items-center justify-center gap-1.5 text-[13px] text-fg-muted">
+          <span>{owner.name}</span>
           {owner.username && (
             <>
-              {" · "}
+              <span className="text-fg-faint">·</span>
               <Link
                 href={`/${owner.username}`}
                 className="text-fg-ghost transition-colors duration-150 hover:text-accent"
@@ -732,7 +739,14 @@ export function ThreadViewerClient({
               </Link>
             </>
           )}
-        </p>
+          <span className="text-fg-faint">·</span>
+          <StarButton
+            slug={thread.slug}
+            initialStarred={starred}
+            initialStarCount={starCount}
+            isAuthenticated={isAuthenticated}
+          />
+        </div>
       </PageReveal>
 
       {/* Main layout: conversation + sidebar */}

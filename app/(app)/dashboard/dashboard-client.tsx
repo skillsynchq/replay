@@ -19,6 +19,7 @@ interface ThreadItem {
   keyPoints: string[] | null;
   agent: string;
   model: string | null;
+  starCount: number;
   visibility: string;
   messageCount: number;
   sessionTs: string;
@@ -165,6 +166,7 @@ export function DashboardClient({
                     keyPoints={thread.keyPoints}
                     agent={thread.agent}
                     model={thread.model}
+                    starCount={thread.starCount}
                     visibility={thread.visibility}
                     messageCount={thread.messageCount}
                     sessionTs={thread.sessionTs}

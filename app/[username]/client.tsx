@@ -22,6 +22,8 @@ interface ThreadItem {
   keyPoints?: string[] | null;
   agent: string;
   model: string | null;
+  starCount: number;
+  starred: boolean;
   messageCount: number;
   sessionTs: string;
 }
@@ -157,6 +159,9 @@ export function ProfileThreads({
                 keyPoints={t.keyPoints}
                 agent={t.agent}
                 model={t.model}
+                starCount={t.starCount}
+                starred={t.starred}
+                isAuthenticated={isAuthenticated}
                 messageCount={t.messageCount}
                 sessionTs={t.sessionTs}
               />

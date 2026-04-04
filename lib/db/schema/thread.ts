@@ -30,6 +30,7 @@ export const thread = pgTable(
     tags: text("tags").array().notNull().default(sql`'{}'::text[]`),
     keyPoints: text("key_points").array(),
 
+    starCount: integer("star_count").notNull().default(0),
     messageCount: integer("message_count").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -62,6 +63,22 @@ export const message = pgTable(
   },
   (t) => [
     uniqueIndex("uq_message_thread_ordinal").on(t.threadId, t.ordinal),
+  ]
+);
+
+export const threadStar = pgTable(
+  "thread_star",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    threadId: uuid("thread_id")
+      .notNull()
+      .references(() => thread.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("uq_thread_star_user_thread").on(t.userId, t.threadId),
+    index("idx_thread_star_thread").on(t.threadId),
   ]
 );
 

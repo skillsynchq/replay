@@ -72,6 +72,21 @@ export async function shareThread(
   }
 }
 
+export async function toggleStar(
+  slug: string
+): Promise<Result<{ starred: boolean; starCount: number }>> {
+  try {
+    const res = await fetch(`/api/threads/${slug}/star`, { method: "POST" });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      return { ok: false, error: body.error ?? "Something went wrong" };
+    }
+    return { ok: true, data: await res.json() };
+  } catch {
+    return { ok: false, error: "Network error" };
+  }
+}
+
 export async function unshareThread(
   slug: string,
   userId: string

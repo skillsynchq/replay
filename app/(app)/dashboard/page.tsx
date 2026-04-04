@@ -42,6 +42,7 @@ export default async function DashboardPage({
         agent: thread.agent,
         model: thread.model,
         visibility: thread.visibility,
+        starCount: thread.starCount,
         messageCount: thread.messageCount,
         sessionTs: thread.sessionTs,
         createdAt: thread.createdAt,

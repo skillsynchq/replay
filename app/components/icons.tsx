@@ -255,6 +255,25 @@ export function XIcon({ className }: IconProps) {
   );
 }
 
+export function StarIcon({
+  className,
+  filled = false,
+}: IconProps & { filled?: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M8 1.5l2.12 4.3 4.74.69-3.43 3.34.81 4.72L8 12.26l-4.24 2.29.81-4.72L1.14 6.49l4.74-.69L8 1.5z" />
+    </svg>
+  );
+}
+
 export function SearchIcon({ className }: IconProps) {
   return (
     <svg
