@@ -131,8 +131,8 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Right column — 61.8% (golden ratio major) */}
-        <div className="flex w-full flex-col px-6 pb-6 min-[900px]:w-[61.8%] min-[900px]:py-8 min-[900px]:pl-0 min-[900px]:pr-[max(1.5rem,calc((100vw-80rem)/2+1.5rem))]">
+        {/* Right column — 61.8% (golden ratio major), hidden on mobile */}
+        <div className="hidden min-[900px]:flex w-full flex-col px-6 pb-6 min-[900px]:w-[61.8%] min-[900px]:py-8 min-[900px]:pl-0 min-[900px]:pr-[max(1.5rem,calc((100vw-80rem)/2+1.5rem))]">
           <ConversationPreview />
         </div>
       </main>
