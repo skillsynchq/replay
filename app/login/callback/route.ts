@@ -75,6 +75,10 @@ export async function GET(request: NextRequest) {
     return response;
   }
 
-  // Normal web login — redirect to dashboard
+  // Normal web login — nudge first-timers to claim a username
+  if (!session.user.username) {
+    return NextResponse.redirect(new URL("/settings?welcome=1", request.url));
+  }
+
   return NextResponse.redirect(new URL("/", request.url));
 }

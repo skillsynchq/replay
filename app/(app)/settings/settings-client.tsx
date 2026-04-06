@@ -17,8 +17,10 @@ interface UserProfile {
 
 export function SettingsClient({
   initialUser,
+  welcome = false,
 }: {
   initialUser: UserProfile;
+  welcome?: boolean;
 }) {
   const router = useRouter();
   const [user, setUser] = useState(initialUser);
@@ -165,12 +167,14 @@ export function SettingsClient({
               </div>
             ) : (
               <>
-                <p className="mt-2 text-[13px] text-fg-muted">
-                  Claim your profile URL at{" "}
-                  <span className="font-mono text-fg-subtle">
-                    replay.md/{username || "you"}
-                  </span>
-                </p>
+                {!welcome && (
+                  <p className="mt-2 text-[13px] text-fg-muted">
+                    Claim your profile URL at{" "}
+                    <span className="font-mono text-fg-subtle">
+                      replay.md/{username || "you"}
+                    </span>
+                  </p>
+                )}
 
                 <div className="mt-4 flex items-center gap-3">
                   <div className="relative flex-1">
@@ -191,9 +195,10 @@ export function SettingsClient({
                         setError(null);
                       }}
                       placeholder="username"
+                      autoFocus={welcome}
                       autoComplete="off"
                       spellCheck={false}
-                      className="w-full rounded-[4px] border border-border bg-surface px-3 py-2 pl-8 font-mono text-[13px] text-fg placeholder:text-fg-faint focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+                      className="w-full rounded-[4px] border border-border-hover bg-surface-raised px-3 py-2 pl-8 font-mono text-[13px] text-fg placeholder:text-fg-subtle focus-visible:border-fg-subtle focus-visible:outline-none"
                     />
                     {username.length >= 3 && !checking && available !== null ? (
                       <span
@@ -236,6 +241,26 @@ export function SettingsClient({
                 {error ? (
                   <p className="mt-2 text-[12px] text-diff-remove">{error}</p>
                 ) : null}
+
+                {welcome && (
+                  <div className="mt-4 animate-reveal">
+                    <div className="ml-6 flex">
+                      <span className="border-x-[6px] border-b-[6px] border-x-transparent border-b-border" />
+                    </div>
+                    <div className="-mt-px rounded-[4px] border border-border px-5 py-4">
+                      <p className="font-mono text-[11px] uppercase tracking-widest text-accent">
+                        Welcome to Replay
+                      </p>
+                      <p className="mt-2 text-[13px] text-fg-muted">
+                        Your threads will live at{" "}
+                        <span className="font-mono text-fg-subtle">
+                          replay.md/{username || "you"}
+                        </span>
+                        . Pick your username before someone else does.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </div>

@@ -3,11 +3,18 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { SettingsClient } from "./settings-client";
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const headersList = await headers();
   const session = await auth.api.getSession({ headers: headersList });
 
   if (!session) redirect("/login");
+
+  const params = await searchParams;
+  const welcome = params.welcome === "1";
 
   return (
     <SettingsClient
@@ -20,6 +27,7 @@ export default async function SettingsPage() {
           ((session.user as Record<string, unknown>).username as string | null) ??
           null,
       }}
+      welcome={welcome}
     />
   );
 }

@@ -728,7 +728,7 @@ export function ThreadViewerClient({
         />
         <div className="mt-2 flex items-center justify-center gap-1.5 text-[13px] text-fg-muted">
           <span>{owner.name}</span>
-          {owner.username && (
+          {owner.username ? (
             <>
               <span className="text-fg-faint">·</span>
               <Link
@@ -738,7 +738,17 @@ export function ThreadViewerClient({
                 @{owner.username}
               </Link>
             </>
-          )}
+          ) : isOwner ? (
+            <>
+              <span className="text-fg-faint">·</span>
+              <Link
+                href="/settings"
+                className="text-accent transition-colors duration-150 hover:text-accent-hover"
+              >
+                claim @username
+              </Link>
+            </>
+          ) : null}
           <span className="text-fg-faint">·</span>
           <StarButton
             slug={thread.slug}
