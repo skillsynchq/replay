@@ -9,9 +9,10 @@ import { authClient } from "@/lib/auth-client";
 
 interface NavClientProps {
   user: { name: string; image: string | null; username: string | null } | null;
+  minimal?: boolean;
 }
 
-export function NavClient({ user }: NavClientProps) {
+export function NavClient({ user, minimal }: NavClientProps) {
   const router = useRouter();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -116,7 +117,7 @@ export function NavClient({ user }: NavClientProps) {
           )}
         </div>
 
-        <div className="hidden min-[900px]:flex items-center gap-6">
+        {!minimal && <div className="hidden min-[900px]:flex items-center gap-6">
           <Link
             href="/docs"
             className="text-fg-muted text-[13px] transition-colors duration-150 hover:text-fg"
@@ -200,9 +201,9 @@ export function NavClient({ user }: NavClientProps) {
               Sign in
             </Link>
           )}
-        </div>
+        </div>}
 
-        <div className="relative min-[900px]:hidden" ref={mobileNavRef}>
+        {!minimal && <div className="relative min-[900px]:hidden" ref={mobileNavRef}>
           <button
             type="button"
             onClick={() => {
@@ -316,7 +317,7 @@ export function NavClient({ user }: NavClientProps) {
               </div>
             </div>
           )}
-        </div>
+        </div>}
       </div>
     </nav>
   );

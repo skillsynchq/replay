@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { NavClient } from "./nav-client";
 
-export async function Nav() {
+export async function Nav({ minimal }: { minimal?: boolean } = {}) {
   let user: { name: string; image: string | null; username: string | null } | null = null;
 
   try {
@@ -19,5 +19,5 @@ export async function Nav() {
     // Not authenticated or headers unavailable (static page)
   }
 
-  return <NavClient user={user} />;
+  return <NavClient user={user} minimal={minimal} />;
 }
