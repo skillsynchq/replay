@@ -93,14 +93,14 @@ export function NavClient({ user }: NavClientProps) {
   }, []);
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 py-5 px-6 min-[900px]:px-[max(1.5rem,calc((100vw-80rem)/2+1.5rem))]">
-      <div className="flex items-center justify-between gap-4">
+    <nav className="fixed top-0 left-0 right-0 z-50 flex h-[56px] items-center px-6 min-[900px]:px-[max(1.5rem,calc((100vw-80rem)/2+1.5rem))]">
+      <div className="flex w-full items-center justify-between gap-4">
         <div className="min-w-0 flex items-center gap-1.5 font-mono text-[13px] leading-none tracking-tight">
           <Link
             href="/"
             className="shrink-0 flex items-center gap-1.5 text-fg transition-colors duration-150 hover:text-fg"
           >
-            <FastForwardIcon className="size-[18px]" />
+            <FastForwardIcon className="size-[22px]" />
             replay.md
           </Link>
           {user?.username && (
@@ -116,7 +116,7 @@ export function NavClient({ user }: NavClientProps) {
           )}
         </div>
 
-        <div className="hidden min-[900px]:flex items-center gap-6">
+        <div className="hidden min-[900px]:flex items-center gap-6 text-[13px] leading-none">
           <Link
             href="/docs"
             className="text-fg-muted text-[13px] transition-colors duration-150 hover:text-fg"
@@ -132,7 +132,7 @@ export function NavClient({ user }: NavClientProps) {
               >
                 Dashboard
               </Link>
-              <div className="relative" ref={userMenuRef}>
+              <div className="relative flex items-center" ref={userMenuRef}>
                 <button
                   type="button"
                   onClick={() => {
@@ -142,15 +142,13 @@ export function NavClient({ user }: NavClientProps) {
                   aria-haspopup="menu"
                   aria-expanded={userMenuOpen}
                   aria-controls={userMenuId}
-                  className="cursor-pointer rounded-[4px] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+                  className="flex cursor-pointer items-center rounded-[4px] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
                 >
                   {user.image ? (
-                    <Image
+                    <img
                       src={user.image}
                       alt={user.name}
-                      width={24}
-                      height={24}
-                      className="size-6 rounded-[4px] border border-border object-cover transition-colors duration-150 hover:border-border-hover"
+                      className="block size-6 rounded-[4px] border border-border object-cover transition-colors duration-150 hover:border-border-hover"
                     />
                   ) : (
                     <span className="flex size-6 items-center justify-center rounded-[4px] border border-border bg-surface text-[11px] font-medium text-fg-muted transition-colors duration-150 hover:border-border-hover">
