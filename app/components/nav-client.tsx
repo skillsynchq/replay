@@ -95,7 +95,7 @@ export function NavClient({ user }: NavClientProps) {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex h-[56px] items-center px-6 min-[900px]:px-[max(1.5rem,calc((100vw-80rem)/2+1.5rem))]">
       <div className="flex w-full items-center justify-between gap-4">
-        <div className="min-w-0 flex items-center gap-1.5 font-mono text-[13px] leading-none tracking-tight">
+        <div className="min-w-0 flex items-center gap-1.5 font-mono text-[13px] tracking-tight">
           <Link
             href="/"
             className="shrink-0 flex items-center gap-1.5 text-fg transition-colors duration-150 hover:text-fg"
@@ -116,7 +116,7 @@ export function NavClient({ user }: NavClientProps) {
           )}
         </div>
 
-        <div className="hidden min-[900px]:flex items-center gap-6 text-[13px] leading-none">
+        <div className="hidden min-[900px]:flex items-center gap-6">
           <Link
             href="/docs"
             className="text-fg-muted text-[13px] transition-colors duration-150 hover:text-fg"
@@ -163,7 +163,7 @@ export function NavClient({ user }: NavClientProps) {
                     ref={userMenuListRef}
                     role="menu"
                     aria-label="User menu"
-                    className="absolute right-0 mt-2 w-40 rounded-md border border-border bg-surface py-1 shadow-lg"
+                    className="absolute right-0 top-full mt-2 w-40 rounded-md border border-border bg-surface py-1 shadow-lg"
                   >
                     <Link
                       href="/settings"
