@@ -13,6 +13,7 @@ import { ThreadCard } from "@/app/components/thread-card";
 import { SearchResults } from "@/app/components/search-results";
 import { AssistantSearchTrigger } from "@/app/components/assistant";
 import type { GroupedSearchResult } from "@/lib/search/index";
+import type { ConversationSnapshot } from "@/lib/thread-snapshot";
 
 interface ThreadItem {
   id: string;
@@ -26,6 +27,7 @@ interface ThreadItem {
   starred: boolean;
   messageCount: number;
   sessionTs: string;
+  conversationSnapshot?: ConversationSnapshot;
 }
 
 interface ProfileThreadsProps {
@@ -164,6 +166,7 @@ export function ProfileThreads({
                 isAuthenticated={isAuthenticated}
                 messageCount={t.messageCount}
                 sessionTs={t.sessionTs}
+                conversationSnapshot={t.conversationSnapshot}
               />
             ))}
           </div>
