@@ -111,19 +111,6 @@ export function ConversationPreview() {
         </div>
       </PageReveal>
 
-      <PageReveal delay={400}>
-        <div className="mt-3 flex items-center gap-2 text-[13px]">
-          <span className="text-fg-ghost">
-            This is what sharing looks like.
-          </span>
-          <a
-            href="#"
-            className="text-accent transition-colors duration-150 hover:text-accent-hover"
-          >
-            Explore public threads →
-          </a>
-        </div>
-      </PageReveal>
     </div>
   );
 }

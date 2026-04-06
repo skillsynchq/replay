@@ -1,9 +1,8 @@
-import Link from "next/link";
 import { Nav } from "./components/nav";
 import { CopyButton } from "./components/copy-button";
 import { PageReveal } from "./components/page-reveal";
 import { ConversationPreview } from "./components/conversation-preview";
-import { ClaudeMark, OpenAIMark, GitHubMark } from "./components/icons";
+import { ClaudeMark, OpenAIMark } from "./components/icons";
 
 const INSTALL_COMMAND = "curl -sSL https://install.replay.md | sh";
 
@@ -37,14 +36,16 @@ export default function Home() {
             {/* Hero */}
             <PageReveal delay={0}>
               <h1 className="text-[clamp(28px,4vw,44px)] font-medium leading-[1.1] tracking-tight text-fg">
-                Share your agent sessions
+                Home for your
+                <br />
+                coding sessions
               </h1>
             </PageReveal>
 
             <PageReveal delay={80}>
               <p className="mt-3 max-w-sm text-[13px] leading-relaxed text-fg-muted">
-                Pick any Claude Code or Codex conversation, give it a URL, and
-                share it with anyone.
+                Turn any Claude Code or Codex conversation into a decision
+                trace. Browsable, searchable, and shareable.
               </p>
             </PageReveal>
 
@@ -57,6 +58,7 @@ export default function Home() {
                 <CopyButton text={INSTALL_COMMAND} />
               </div>
               <div className="mt-3 flex items-center gap-2">
+                <span className="text-[11px] text-fg-ghost">Available for</span>
                 <ClaudeMark className="size-3.5 text-fg-ghost" />
                 <OpenAIMark className="size-3.5 text-fg-ghost" />
               </div>
@@ -95,37 +97,14 @@ export default function Home() {
                   Private until you share. Delete anytime.
                 </p>
                 <p className="text-[13px] text-fg-muted">
-                  <span className="text-fg">Open source CLI.</span>{" "}
-                  Inspect every byte before it leaves your machine.
-                  <a
-                    href="https://github.com/nicholasgriffintn/replay-cli"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="ml-1.5 inline-block align-middle transition-colors duration-150 hover:text-fg"
-                  >
-                    <GitHubMark className="size-3" />
-                  </a>
+                  Going open source soon.
                 </p>
               </div>
             </PageReveal>
 
             <PageReveal delay={400}>
-              <div className="mt-4 flex items-center gap-3 text-[11px] text-fg-ghost">
+              <div className="mt-4 text-[11px] text-fg-ghost">
                 <span>© 2026 replay.md</span>
-                <span>·</span>
-                <Link
-                  href="/privacy"
-                  className="transition-colors duration-150 hover:text-fg-muted"
-                >
-                  Privacy
-                </Link>
-                <span>·</span>
-                <Link
-                  href="/terms"
-                  className="transition-colors duration-150 hover:text-fg-muted"
-                >
-                  Terms
-                </Link>
               </div>
             </PageReveal>
           </div>

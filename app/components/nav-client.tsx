@@ -93,8 +93,8 @@ export function NavClient({ user }: NavClientProps) {
   }, []);
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-5">
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
+    <nav className="fixed top-0 left-0 right-0 z-50 py-5 px-6 min-[900px]:px-[max(1.5rem,calc((100vw-80rem)/2+1.5rem))]">
+      <div className="flex items-center justify-between gap-4">
         <div className="min-w-0 flex items-center gap-1.5 font-mono text-[13px] tracking-tight">
           <Link
             href="/"
