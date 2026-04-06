@@ -134,7 +134,7 @@ export default async function ProfilePage({
                 <p className="text-[13px] text-fg-ghost">@{user.username}</p>
               </div>
               {ecgData.some((d) => d.count > 0) && (
-                <div className="ml-auto shrink-0">
+                <div className="ml-auto min-w-0 flex-1 mr-0.5">
                   <EcgChart data={ecgData} />
                 </div>
               )}

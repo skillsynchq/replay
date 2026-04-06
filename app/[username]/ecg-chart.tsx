@@ -79,8 +79,8 @@ export function EcgChart({ data }: EcgChartProps) {
     <div>
       <svg
         viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
-        width={384}
-        height={100}
+        className="h-[100px] w-full"
+        preserveAspectRatio="xMaxYMid meet"
         role="img"
         aria-label={`Prompt activity over the last ${data.length} days`}
       >
