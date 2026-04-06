@@ -6,6 +6,17 @@ import {
   PreviewConversation,
 } from "./conversation";
 
+const configDiffLines: ConversationDiffLine[] = [
+  { type: "add", num: [null, 1], code: 'export const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days' },
+  { type: "add", num: [null, 2], code: 'export const SESSION_COOKIE_NAME = "session";' },
+  { type: "add", num: [null, 3], code: "" },
+  { type: "add", num: [null, 4], code: "export const sessionConfig = {" },
+  { type: "add", num: [null, 5], code: "  maxAge: SESSION_MAX_AGE," },
+  { type: "add", num: [null, 6], code: "  refresh: true," },
+  { type: "add", num: [null, 7], code: '  secure: process.env.NODE_ENV === "production",' },
+  { type: "add", num: [null, 8], code: "} as const;" },
+];
+
 const diffLines: ConversationDiffLine[] = [
   { type: "context", num: [14, 14], code: "export async function validateSession(" },
   { type: "context", num: [15, 15], code: "  request: NextRequest" },
@@ -97,16 +108,33 @@ export function ConversationPreview() {
             Looks good, but extract the config into a separate file
           </Conversation.UserMessage>
 
-          <div className="relative">
-            <Conversation.AssistantMessage timestamp="1m ago">
-              <p className="text-[13px] leading-relaxed text-fg-muted">
-                I&apos;ll move the session configuration to{" "}
-                <Conversation.InlineCode>src/lib/auth.config.ts</Conversation.InlineCode> and export
-                the constants from there. This keeps the validation logic
-                clean and makes the config easy to adjust per environment...
-              </p>
-            </Conversation.AssistantMessage>
-          </div>
+          <Conversation.AssistantMessage timestamp="1m ago">
+            <Conversation.ToolRow label="Read src/lib/auth.ts" />
+            <Conversation.ToolRow label="Write src/lib/auth.config.ts" />
+            <p className="text-[13px] leading-relaxed text-fg-muted">
+              I&apos;ll move the session configuration to{" "}
+              <Conversation.InlineCode>src/lib/auth.config.ts</Conversation.InlineCode> and export
+              the constants from there. This keeps the validation logic
+              clean and makes the config easy to adjust per environment.
+            </p>
+            <Conversation.Diff
+              lines={configDiffLines}
+              filePath="src/lib/auth.config.ts"
+            />
+          </Conversation.AssistantMessage>
+
+          <Conversation.UserMessage>
+            Can you also add a unit test for the token extraction?
+          </Conversation.UserMessage>
+
+          <Conversation.AssistantMessage timestamp="30s ago">
+            <Conversation.ToolRow label="Read src/lib/__tests__/auth.test.ts" />
+            <p className="text-[13px] leading-relaxed text-fg-muted">
+              I&apos;ll add tests covering the main cases: valid bearer token,
+              missing header, malformed token, and expired session. Let me
+              create the test file with those scenarios...
+            </p>
+          </Conversation.AssistantMessage>
         </PreviewConversation>
         </div>
       </PageReveal>

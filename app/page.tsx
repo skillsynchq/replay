@@ -29,7 +29,7 @@ export default function Home() {
     <div id="top" className="flex h-dvh flex-col min-[900px]:overflow-hidden">
       <Nav />
 
-      <main className="flex flex-1 flex-col pt-16 min-[900px]:flex-row min-[900px]:pt-[48px]">
+      <main className="flex min-h-0 flex-1 flex-col pt-16 min-[900px]:flex-row min-[900px]:pt-[48px]">
         {/* Left column — 38.2% (golden ratio minor) */}
         <div className="flex w-full flex-col justify-between px-6 pb-6 min-[900px]:w-[38.2%] min-[900px]:py-8 min-[900px]:pl-[max(1.5rem,calc((100vw-80rem)/2+1.5rem))]">
           <div>
@@ -111,7 +111,7 @@ export default function Home() {
         </div>
 
         {/* Right column — 61.8% (golden ratio major), hidden on mobile */}
-        <div className="hidden min-[900px]:flex w-full flex-col px-6 pb-6 min-[900px]:w-[61.8%] min-[900px]:py-8 min-[900px]:pl-0 min-[900px]:pr-[max(1.5rem,calc((100vw-80rem)/2+1.5rem))]">
+        <div className="hidden min-[900px]:flex w-full min-h-0 flex-col px-6 pb-6 min-[900px]:w-[61.8%] min-[900px]:py-8 min-[900px]:pl-0 min-[900px]:pr-[max(1.5rem,calc((100vw-80rem)/2+1.5rem))]">
           <ConversationPreview />
         </div>
       </main>
