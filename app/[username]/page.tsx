@@ -10,6 +10,8 @@ import { Nav } from "@/app/components/nav";
 import { Assistant } from "@/app/components/assistant";
 import { PageReveal } from "@/app/components/page-reveal";
 import { ProfileThreads } from "./client";
+import { fetchEcgData } from "@/lib/ecg-data";
+import { EcgChart } from "./ecg-chart";
 
 export default async function ProfilePage({
   params,
@@ -79,6 +81,9 @@ export default async function ProfilePage({
     messagesByThread.set(item.threadId, [item]);
   }
 
+  // Get ECG activity data
+  const ecgData = await fetchEcgData(user.id);
+
   // Check if visitor is authenticated (for AI button + stars)
   let isAuthenticated = false;
   let starredSlugs = new Set<string>();
@@ -122,12 +127,17 @@ export default async function ProfilePage({
                   className="size-12 rounded-[4px] border border-border object-cover"
                 />
               )}
-              <div>
+              <div className="min-w-0 shrink-0">
                 <h1 className="text-[21px] font-medium text-fg">
                   {user.name}
                 </h1>
                 <p className="text-[13px] text-fg-ghost">@{user.username}</p>
               </div>
+              {ecgData.some((d) => d.count > 0) && (
+                <div className="ml-auto shrink-0">
+                  <EcgChart data={ecgData} />
+                </div>
+              )}
             </div>
           </PageReveal>
 
