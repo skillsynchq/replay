@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { authClient } from "@/lib/auth-client";
+import { FastForwardIcon } from "@/app/components/icons";
 
 function getLastLoginMethod(): string | null {
   const match = document.cookie.match(/(?:^|; )last_login_method=(\w+)/);
@@ -54,7 +55,10 @@ function LoginForm() {
   return (
     <div className="w-full max-w-sm">
       <div className="text-center">
-        <h1 className="font-mono text-[13px] text-fg">replay.md</h1>
+        <h1 className="flex items-center justify-center gap-1.5 font-mono text-[13px] text-fg">
+          <FastForwardIcon className="size-[18px]" />
+          replay.md
+        </h1>
         <p className="mt-2 text-[16px] font-medium text-fg">
           {redirectUri ? "Authorize the CLI" : "Sign in"}
         </p>
