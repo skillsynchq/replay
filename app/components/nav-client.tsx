@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRef, useState, useEffect, useId } from "react";
 import { useRouter } from "next/navigation";
-import { XIcon } from "./icons";
+import { XIcon, FastForwardIcon } from "./icons";
 import { authClient } from "@/lib/auth-client";
 
 interface NavClientProps {
@@ -98,8 +98,9 @@ export function NavClient({ user }: NavClientProps) {
         <div className="min-w-0 flex items-center gap-1.5 font-mono text-[13px] tracking-tight">
           <Link
             href="/"
-            className="shrink-0 text-fg transition-colors duration-150 hover:text-fg"
+            className="shrink-0 flex items-center gap-1.5 text-fg transition-colors duration-150 hover:text-fg"
           >
+            <FastForwardIcon className="size-[18px]" />
             replay.md
           </Link>
           {user?.username && (

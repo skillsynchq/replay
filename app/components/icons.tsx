@@ -2,6 +2,20 @@ interface IconProps {
   className?: string;
 }
 
+export function FastForwardIcon({ className }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M1.5 2.5v11l6-5.5-6-5.5Z" />
+      <path d="M8.5 2.5v11l6-5.5-6-5.5Z" />
+    </svg>
+  );
+}
+
 function LogoMask({
   className,
   src,
