@@ -10,7 +10,7 @@ const UNAUTHORIZED = NextResponse.json(
  * Minimum CLI version the server will accept.
  * Bump this when a breaking change requires clients to update.
  */
-const MIN_CLI_VERSION = "0.1.0";
+const MIN_CLI_VERSION = "0.3.0";
 
 /**
  * Require authentication. Returns the session or a 401 NextResponse.

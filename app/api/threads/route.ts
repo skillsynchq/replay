@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse, after } from "next/server";
+import { gunzipSync } from "node:zlib";
 import { nanoid } from "nanoid";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -28,7 +29,8 @@ export async function POST(request: NextRequest) {
   const [session, authError] = await requireAuth(request);
   if (authError) return authError;
 
-  const body: unknown = await request.json();
+  const compressed = Buffer.from(await request.arrayBuffer());
+  const body: unknown = JSON.parse(gunzipSync(compressed).toString("utf-8"));
   const parsed = uploadThreadSchema.safeParse(body);
 
   if (!parsed.success) {

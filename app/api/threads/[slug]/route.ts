@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse, after } from "next/server";
+import { gunzipSync } from "node:zlib";
 import { eq, and, asc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { thread, message, threadShare } from "@/lib/db/schema";
@@ -193,7 +194,8 @@ export async function PUT(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const body: unknown = await request.json();
+  const compressed = Buffer.from(await request.arrayBuffer());
+  const body: unknown = JSON.parse(gunzipSync(compressed).toString("utf-8"));
   const parsed = uploadThreadSchema.safeParse(body);
 
   if (!parsed.success) {
