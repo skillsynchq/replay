@@ -95,7 +95,7 @@ export function NavClient({ user }: NavClientProps) {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 py-5 px-6 min-[900px]:px-[max(1.5rem,calc((100vw-80rem)/2+1.5rem))]">
       <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0 flex items-center gap-1.5 font-mono text-[13px] tracking-tight">
+        <div className="min-w-0 flex items-center gap-1.5 font-mono text-[13px] leading-none tracking-tight">
           <Link
             href="/"
             className="shrink-0 flex items-center gap-1.5 text-fg transition-colors duration-150 hover:text-fg"
