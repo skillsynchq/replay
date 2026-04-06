@@ -40,7 +40,7 @@ export function ConversationPreview() {
   return (
     <div className="flex min-h-0 flex-1 flex-col max-[899px]:max-h-[50vh]">
       <PageReveal delay={160} className="flex min-h-0 flex-1 flex-col">
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[4px] border border-border transition-colors duration-150 hover:border-border-hover">
+        <div className="relative z-[1] flex min-h-0 flex-1 flex-col overflow-hidden rounded-[4px] border border-border bg-bg transition-colors duration-150 hover:border-border-hover">
           {/* Window chrome title bar */}
           <div className="flex items-center gap-2 border-b border-border bg-surface-raised px-3.5 py-2.5">
             <span className="size-[10px] rounded-full bg-[#ff5f57]" />
