@@ -7,15 +7,17 @@ import { PageReveal } from "@/app/components/page-reveal";
 import { CopyButton } from "@/app/components/copy-button";
 import { SearchResults } from "@/app/components/search-results";
 import { AssistantSearchTrigger } from "@/app/components/assistant";
+import { ChevronRight, ChevronDown } from "@/app/components/icons";
 import { useThreadSearch } from "@/lib/search/use-thread-search";
 import { deleteThread } from "@/lib/thread-mutations";
+import type { ProjectGroupsConfig } from "@/lib/config";
 import type { ConversationSnapshot } from "@/lib/thread-snapshot";
 
 interface ThreadItem {
   id: string;
   slug: string;
   title: string | null;
-
+  projectPath: string | null;
   keyPoints: string[] | null;
   agent: string;
   model: string | null;
@@ -45,12 +47,101 @@ function buildPageHref(page: number, query: string) {
   return search ? `/dashboard?${search}` : "/dashboard";
 }
 
+function projectName(path: string): string {
+  const parts = path.replace(/\/+$/, "").split("/");
+  return parts[parts.length - 1] || path;
+}
+
+function groupByProject(threads: ThreadItem[]): { project: string; path: string | null; threads: ThreadItem[] }[] {
+  const groups = new Map<string, ThreadItem[]>();
+  const pathForProject = new Map<string, string | null>();
+
+  for (const t of threads) {
+    const key = t.projectPath ?? "__ungrouped__";
+    const existing = groups.get(key);
+    if (existing) {
+      existing.push(t);
+    } else {
+      groups.set(key, [t]);
+      pathForProject.set(key, t.projectPath);
+    }
+  }
+
+  return Array.from(groups.entries()).map(([key, items]) => ({
+    project: key === "__ungrouped__" ? "Other" : projectName(key),
+    path: pathForProject.get(key) ?? null,
+    threads: items,
+  }));
+}
+
+function ProjectGroup({
+  project,
+  threads,
+  defaultCollapsed,
+  deletedSlugs,
+  onDelete,
+}: {
+  project: string;
+  threads: ThreadItem[];
+  defaultCollapsed: boolean;
+  deletedSlugs: Set<string>;
+  onDelete: (slug: string) => void;
+}) {
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  const visible = threads.filter((t) => !deletedSlugs.has(t.slug));
+  if (visible.length === 0) return null;
+
+  return (
+    <div className="rounded-[4px] border border-border">
+      <button
+        type="button"
+        onClick={() => setCollapsed((c) => !c)}
+        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors duration-150 hover:border-border-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+      >
+        {collapsed ? (
+          <ChevronRight className="size-3 text-fg-ghost" />
+        ) : (
+          <ChevronDown className="size-3 text-fg-ghost" />
+        )}
+        <span className="text-[13px] font-medium text-fg">{project}</span>
+        <span className="ml-auto rounded-[2px] border border-border px-1.5 py-0.5 font-mono text-[10px] text-fg-ghost">
+          {visible.length}
+        </span>
+      </button>
+      {!collapsed && (
+        <div className="space-y-px border-t border-border">
+          {visible.map((thread) => (
+            <ThreadCard
+              key={thread.id}
+              slug={thread.slug}
+              title={thread.title}
+              keyPoints={thread.keyPoints}
+              agent={thread.agent}
+              model={thread.model}
+              starCount={thread.starCount}
+              visibility={thread.visibility}
+              messageCount={thread.messageCount}
+              sessionTs={thread.sessionTs}
+              conversationSnapshot={thread.conversationSnapshot}
+              showVisibility
+              onDelete={onDelete}
+              borderless
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function DashboardClient({
   initialData,
   initialQuery,
+  projectGroups,
 }: {
   initialData: ThreadsResponse;
   initialQuery: string;
+  projectGroups: ProjectGroupsConfig;
 }) {
   const [query, setQuery] = useState(initialQuery);
   const [deletedSlugs, setDeletedSlugs] = useState<Set<string>>(new Set());
@@ -154,28 +245,42 @@ export function DashboardClient({
             </div>
           ) : (
             <>
-              <div className="space-y-3">
-                {initialData.threads
-                  .filter((t) => !deletedSlugs.has(t.slug))
-                  .map((thread) => (
-                  <ThreadCard
-                    key={thread.id}
-                    slug={thread.slug}
-                    title={thread.title}
-
-                    keyPoints={thread.keyPoints}
-                    agent={thread.agent}
-                    model={thread.model}
-                    starCount={thread.starCount}
-                    visibility={thread.visibility}
-                    messageCount={thread.messageCount}
-                    sessionTs={thread.sessionTs}
-                    conversationSnapshot={thread.conversationSnapshot}
-                    showVisibility
-                    onDelete={handleDelete}
-                  />
-                ))}
-              </div>
+              {projectGroups.enabled ? (
+                <div className="space-y-4">
+                  {groupByProject(initialData.threads).map((group) => (
+                    <ProjectGroup
+                      key={group.path ?? "__ungrouped__"}
+                      project={group.project}
+                      threads={group.threads}
+                      defaultCollapsed={projectGroups.defaultCollapsed}
+                      deletedSlugs={deletedSlugs}
+                      onDelete={handleDelete}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {initialData.threads
+                    .filter((t) => !deletedSlugs.has(t.slug))
+                    .map((thread) => (
+                    <ThreadCard
+                      key={thread.id}
+                      slug={thread.slug}
+                      title={thread.title}
+                      keyPoints={thread.keyPoints}
+                      agent={thread.agent}
+                      model={thread.model}
+                      starCount={thread.starCount}
+                      visibility={thread.visibility}
+                      messageCount={thread.messageCount}
+                      sessionTs={thread.sessionTs}
+                      conversationSnapshot={thread.conversationSnapshot}
+                      showVisibility
+                      onDelete={handleDelete}
+                    />
+                  ))}
+                </div>
+              )}
 
               {totalPages > 1 ? (
                 <nav

@@ -25,6 +25,7 @@ interface ThreadCardProps {
   showVisibility?: boolean;
   conversationSnapshot?: ConversationSnapshot;
   onDelete?: (slug: string) => void;
+  borderless?: boolean;
 }
 
 const SNAPSHOT_COLORS: Record<ConversationSnapshotKind, string> = {
@@ -114,6 +115,7 @@ export function ThreadCard({
   showVisibility = false,
   conversationSnapshot,
   onDelete,
+  borderless = false,
 }: ThreadCardProps) {
   const showInteractiveStar = isAuthenticated != null;
   const showPassiveCount = !showInteractiveStar && starCount != null && starCount > 0;
@@ -122,7 +124,7 @@ export function ThreadCard({
     <div className="group relative">
       <Link
         href={`/t/${slug}`}
-        className="block rounded-[4px] border border-border px-5 py-4 transition-colors duration-150 hover:border-border-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+        className={`block px-5 py-4 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${borderless ? "hover:bg-surface" : "rounded-[4px] border border-border hover:border-border-hover"}`}
       >
         <div className="flex items-stretch justify-between gap-4">
           <div className="min-w-0 flex-1 py-0.5">

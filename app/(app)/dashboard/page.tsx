@@ -2,6 +2,7 @@ import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { getGlobalConfig, type ProjectGroupsConfig } from "@/lib/config";
 import { db } from "@/lib/db";
 import { message, thread } from "@/lib/db/schema";
 import { buildConversationSnapshot } from "@/lib/thread-snapshot";
@@ -31,13 +32,14 @@ export default async function DashboardPage({
   if (!session) redirect("/login");
 
   const where = and(eq(thread.ownerId, session.user.id));
+  const projectGroups = await getGlobalConfig<ProjectGroupsConfig>("project_groups");
   const [threads, countResult] = await Promise.all([
     db
       .select({
         id: thread.id,
         slug: thread.slug,
         title: thread.title,
-
+        projectPath: thread.projectPath,
         keyPoints: thread.keyPoints,
         agent: thread.agent,
         model: thread.model,
@@ -88,6 +90,7 @@ export default async function DashboardPage({
   return (
     <DashboardClient
       initialQuery={query}
+      projectGroups={projectGroups}
       initialData={{
         threads: threads.map((item) => ({
           ...item,
