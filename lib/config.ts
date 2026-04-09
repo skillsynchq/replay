@@ -17,11 +17,18 @@ export type ProjectGroupsConfig = {
   defaultCollapsed: boolean;
 };
 
+export type DecisionTracesConfig = {
+  enabled: boolean;
+};
+
 const defaults: Record<string, unknown> = {
   project_groups: {
     enabled: false,
     defaultCollapsed: false
   } as ProjectGroupsConfig,
+  decision_traces: {
+    enabled: false,
+  } as DecisionTracesConfig,
 };
 
 export function registerDefault<T>(key: string, value: T) {

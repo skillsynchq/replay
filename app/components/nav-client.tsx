@@ -10,9 +10,10 @@ import { authClient } from "@/lib/auth-client";
 interface NavClientProps {
   user: { name: string; image: string | null; username: string | null } | null;
   minimal?: boolean;
+  tracesEnabled?: boolean;
 }
 
-export function NavClient({ user, minimal }: NavClientProps) {
+export function NavClient({ user, minimal, tracesEnabled }: NavClientProps) {
   const router = useRouter();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -133,6 +134,14 @@ export function NavClient({ user, minimal }: NavClientProps) {
               >
                 Dashboard
               </Link>
+              {tracesEnabled && (
+                <Link
+                  href="/traces"
+                  className="text-fg-muted text-[13px] transition-colors duration-150 hover:text-fg"
+                >
+                  Traces
+                </Link>
+              )}
               <div className="relative flex items-center" ref={userMenuRef}>
                 <button
                   type="button"
@@ -279,6 +288,17 @@ export function NavClient({ user, minimal }: NavClientProps) {
                     >
                       Dashboard
                     </Link>
+                    {tracesEnabled && (
+                      <Link
+                        href="/traces"
+                        role="menuitem"
+                        data-mobile-nav-item="true"
+                        onClick={() => setMobileNavOpen(false)}
+                        className="block rounded-[6px] px-3 py-2 text-[13px] text-fg-muted transition-colors duration-150 hover:bg-surface hover:text-fg focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-inset"
+                      >
+                        Traces
+                      </Link>
+                    )}
                     <Link
                       href="/settings"
                       role="menuitem"

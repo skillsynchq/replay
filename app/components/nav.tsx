@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
+import { getGlobalConfig, type DecisionTracesConfig } from "@/lib/config";
 import { NavClient } from "./nav-client";
 
 export async function Nav({ minimal }: { minimal?: boolean } = {}) {
@@ -19,5 +20,13 @@ export async function Nav({ minimal }: { minimal?: boolean } = {}) {
     // Not authenticated or headers unavailable (static page)
   }
 
-  return <NavClient user={user} minimal={minimal} />;
+  let tracesEnabled = false;
+  try {
+    const cfg = await getGlobalConfig<DecisionTracesConfig>("decision_traces");
+    tracesEnabled = cfg.enabled;
+  } catch {
+    // Config unavailable
+  }
+
+  return <NavClient user={user} minimal={minimal} tracesEnabled={tracesEnabled} />;
 }
