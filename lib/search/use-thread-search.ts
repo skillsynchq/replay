@@ -27,7 +27,7 @@ interface UseThreadSearch {
 
 export function useThreadSearch(query: string): UseThreadSearch {
   const [results, setResults] = useState<GroupedSearchResult[]>([]);
-  const [syncing, setSyncing] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [totalIndexed, setTotalIndexed] = useState(0);
   const [ready, setReady] = useState(false);
   const initialized = useRef(false);
@@ -39,11 +39,15 @@ export function useThreadSearch(query: string): UseThreadSearch {
 
     (async () => {
       try {
+        // Load from IndexedDB first — searches work immediately against cached data
         await init();
         setTotalIndexed(indexedCount());
+        setReady(true);
+
+        // Then sync with server in background
+        setSyncing(true);
         await sync();
         setTotalIndexed(indexedCount());
-        setReady(true);
       } catch (err) {
         console.error("[search] sync error:", err);
       } finally {

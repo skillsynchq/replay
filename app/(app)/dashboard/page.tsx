@@ -1,11 +1,11 @@
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getGlobalConfig, type ProjectGroupsConfig } from "@/lib/config";
 import { db } from "@/lib/db";
-import { message, thread } from "@/lib/db/schema";
-import { buildConversationSnapshot } from "@/lib/thread-snapshot";
+import { thread } from "@/lib/db/schema";
+import { getOrBackfillSnapshot } from "@/lib/thread-snapshot";
 import { DashboardClient } from "./dashboard-client";
 
 function firstParam(value: string | string[] | undefined, fallback = "") {
@@ -45,6 +45,7 @@ export default async function DashboardPage({
         model: thread.model,
         visibility: thread.visibility,
         starCount: thread.starCount,
+        conversationSnapshot: thread.conversationSnapshot,
         messageCount: thread.messageCount,
         sessionTs: thread.sessionTs,
         createdAt: thread.createdAt,
@@ -60,46 +61,24 @@ export default async function DashboardPage({
       .where(where),
   ]);
 
-  const threadIds = threads.map((item) => item.id);
-  const threadMessages =
-    threadIds.length === 0
-      ? []
-      : await db
-          .select({
-            threadId: message.threadId,
-            ordinal: message.ordinal,
-            role: message.role,
-            content: message.content,
-            contentBlocks: message.contentBlocks,
-            redacted: message.redacted,
-          })
-          .from(message)
-          .where(inArray(message.threadId, threadIds))
-          .orderBy(asc(message.threadId), asc(message.ordinal));
-
-  const messagesByThread = new Map<string, typeof threadMessages>();
-  for (const item of threadMessages) {
-    const existing = messagesByThread.get(item.threadId);
-    if (existing) {
-      existing.push(item);
-      continue;
-    }
-    messagesByThread.set(item.threadId, [item]);
-  }
+  const threadsWithSnapshots = await Promise.all(
+    threads.map(async (item) => ({
+      ...item,
+      sessionTs: item.sessionTs.toISOString(),
+      createdAt: item.createdAt.toISOString(),
+      conversationSnapshot: await getOrBackfillSnapshot(
+        item.id,
+        item.conversationSnapshot
+      ),
+    }))
+  );
 
   return (
     <DashboardClient
       initialQuery={query}
       projectGroups={projectGroups}
       initialData={{
-        threads: threads.map((item) => ({
-          ...item,
-          sessionTs: item.sessionTs.toISOString(),
-          createdAt: item.createdAt.toISOString(),
-          conversationSnapshot: buildConversationSnapshot(
-            messagesByThread.get(item.id) ?? []
-          ),
-        })),
+        threads: threadsWithSnapshots,
         total: countResult[0]?.count ?? 0,
         page,
         limit,

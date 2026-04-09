@@ -1,3 +1,7 @@
+import { asc, eq } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { message, thread } from "@/lib/db/schema";
+
 export type ConversationSnapshotKind = "user" | "assistant" | "tool";
 
 export interface ConversationSnapshotSegment {
@@ -219,4 +223,38 @@ export function buildConversationSnapshot(
   }
 
   return segments;
+}
+
+/**
+ * Returns the stored snapshot if present, otherwise computes it from
+ * messages, persists it back to the thread row, and returns it.
+ */
+export async function getOrBackfillSnapshot(
+  threadId: string,
+  stored: unknown
+): Promise<ConversationSnapshot> {
+  if (Array.isArray(stored) && stored.length > 0) {
+    return stored as ConversationSnapshot;
+  }
+
+  const msgs = await db
+    .select({
+      role: message.role,
+      content: message.content,
+      contentBlocks: message.contentBlocks,
+      redacted: message.redacted,
+    })
+    .from(message)
+    .where(eq(message.threadId, threadId))
+    .orderBy(asc(message.ordinal));
+
+  const snapshot = buildConversationSnapshot(msgs);
+
+  // Persist so we don't recompute next time
+  await db
+    .update(thread)
+    .set({ conversationSnapshot: snapshot })
+    .where(eq(thread.id, threadId));
+
+  return snapshot;
 }

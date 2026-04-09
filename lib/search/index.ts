@@ -102,6 +102,13 @@ export async function init(): Promise<number> {
 /** Sync with the server. Returns the number of new/updated threads. */
 export async function sync(): Promise<number> {
   const since = await getSyncTs();
+
+  // Skip if synced recently (avoid redundant requests on rapid navigation)
+  if (since) {
+    const age = Date.now() - new Date(since).getTime();
+    if (age < 30_000) return 0;
+  }
+
   const url = since
     ? `/api/threads/sync?since=${encodeURIComponent(since)}`
     : `/api/threads/sync`;

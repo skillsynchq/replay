@@ -11,6 +11,7 @@ import {
   type ContentBlock,
 } from "@/lib/validations";
 import { summarizeThread } from "@/lib/ai/summarize-thread";
+import { buildConversationSnapshot } from "@/lib/thread-snapshot";
 
 async function findThread(slug: string) {
   const rows = await db
@@ -158,6 +159,24 @@ export async function PATCH(
           and(eq(message.id, r.message_id), eq(message.threadId, threadRow.id))
         );
     }
+
+    // Recompute snapshot since redaction affects it
+    const msgs = await db
+      .select({
+        role: message.role,
+        content: message.content,
+        contentBlocks: message.contentBlocks,
+        redacted: message.redacted,
+      })
+      .from(message)
+      .where(eq(message.threadId, threadRow.id))
+      .orderBy(asc(message.ordinal));
+
+    const snapshot = buildConversationSnapshot(msgs);
+    await db
+      .update(thread)
+      .set({ conversationSnapshot: snapshot })
+      .where(eq(thread.id, threadRow.id));
   }
 
   return NextResponse.json({ updated: true });
@@ -222,6 +241,32 @@ export async function PUT(
     }
   }
 
+  // Pre-process messages for insert and snapshot
+  const processedMessages = msgs.map((m, i) => {
+    let contentText: string;
+    let contentBlocks: ContentBlock[] | null = null;
+
+    if ("content" in m && m.content && Array.isArray(m.content)) {
+      contentBlocks = m.content as ContentBlock[];
+      contentText = extractTextFromBlocks(contentBlocks);
+    } else if ("text" in m && m.text) {
+      contentText = m.text;
+    } else {
+      contentText = "";
+    }
+
+    return { ordinal: i, role: m.role, contentText, contentBlocks, timestamp: m.timestamp, raw: m };
+  });
+
+  const conversationSnapshot = buildConversationSnapshot(
+    processedMessages.map((m) => ({
+      role: m.role,
+      content: m.contentText,
+      contentBlocks: m.contentBlocks,
+      redacted: false,
+    }))
+  );
+
   // Update thread metadata (preserve visibility, tags, shares)
   await db
     .update(thread)
@@ -234,6 +279,7 @@ export async function PUT(
       cliVersion: sessionData.cli_version ?? null,
       sessionTs: new Date(sessionData.timestamp),
       messageCount: msgs.length,
+      conversationSnapshot,
       updatedAt: new Date(),
     })
     .where(eq(thread.id, threadRow.id));
@@ -241,33 +287,19 @@ export async function PUT(
   // Replace messages: delete old, insert new
   await db.delete(message).where(eq(message.threadId, threadRow.id));
 
-  if (msgs.length > 0) {
+  if (processedMessages.length > 0) {
     await db.insert(message).values(
-      msgs.map((m, i) => {
-        let contentText: string;
-        let contentBlocks: ContentBlock[] | null = null;
-
-        if ("content" in m && m.content && Array.isArray(m.content)) {
-          contentBlocks = m.content as ContentBlock[];
-          contentText = extractTextFromBlocks(contentBlocks);
-        } else if ("text" in m && m.text) {
-          contentText = m.text;
-        } else {
-          contentText = "";
-        }
-
-        return {
-          threadId: threadRow.id,
-          ordinal: i,
-          role: m.role,
-          content: contentText,
-          contentBlocks: contentBlocks ? JSON.stringify(contentBlocks) : null,
-          messageModel: "model" in m ? (m.model ?? null) : null,
-          stopReason: "stop_reason" in m ? (m.stop_reason ?? null) : null,
-          usage: "usage" in m && m.usage ? JSON.stringify(m.usage) : null,
-          timestamp: new Date(m.timestamp),
-        };
-      })
+      processedMessages.map((m) => ({
+        threadId: threadRow.id,
+        ordinal: m.ordinal,
+        role: m.role,
+        content: m.contentText,
+        contentBlocks: m.contentBlocks ? JSON.stringify(m.contentBlocks) : null,
+        messageModel: "model" in m.raw ? (m.raw.model ?? null) : null,
+        stopReason: "stop_reason" in m.raw ? (m.raw.stop_reason ?? null) : null,
+        usage: "usage" in m.raw && m.raw.usage ? JSON.stringify(m.raw.usage) : null,
+        timestamp: new Date(m.timestamp),
+      }))
     );
   }
 

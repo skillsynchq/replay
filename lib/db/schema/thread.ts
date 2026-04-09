@@ -30,6 +30,7 @@ export const thread = pgTable(
     tags: text("tags").array().notNull().default(sql`'{}'::text[]`),
     keyPoints: text("key_points").array(),
 
+    conversationSnapshot: jsonb("conversation_snapshot"),
     starCount: integer("star_count").notNull().default(0),
     messageCount: integer("message_count").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

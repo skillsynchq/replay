@@ -11,6 +11,7 @@ import {
   type ContentBlock,
 } from "@/lib/validations";
 import { summarizeThread } from "@/lib/ai/summarize-thread";
+import { buildConversationSnapshot } from "@/lib/thread-snapshot";
 
 /**
  * POST /api/threads — Upload a thread from the CLI
@@ -82,6 +83,32 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Pre-process messages for insert and snapshot
+  const processedMessages = messages.map((m, i) => {
+    let contentText: string;
+    let contentBlocks: ContentBlock[] | null = null;
+
+    if ("content" in m && m.content && Array.isArray(m.content)) {
+      contentBlocks = m.content as ContentBlock[];
+      contentText = extractTextFromBlocks(contentBlocks);
+    } else if ("text" in m && m.text) {
+      contentText = m.text;
+    } else {
+      contentText = "";
+    }
+
+    return { ordinal: i, role: m.role, contentText, contentBlocks, timestamp: m.timestamp, raw: m };
+  });
+
+  const conversationSnapshot = buildConversationSnapshot(
+    processedMessages.map((m) => ({
+      role: m.role,
+      content: m.contentText,
+      contentBlocks: m.contentBlocks,
+      redacted: false,
+    }))
+  );
+
   // Insert thread
   const [inserted] = await db
     .insert(thread)
@@ -99,38 +126,24 @@ export async function POST(request: NextRequest) {
       cliVersion: sessionData.cli_version ?? null,
       sessionTs: new Date(sessionData.timestamp),
       messageCount: messages.length,
+      conversationSnapshot,
     })
     .returning({ id: thread.id, slug: thread.slug });
 
   // Insert messages
-  if (messages.length > 0) {
+  if (processedMessages.length > 0) {
     await db.insert(message).values(
-      messages.map((m, i) => {
-        // Determine content text (for backward compat + search)
-        let contentText: string;
-        let contentBlocks: ContentBlock[] | null = null;
-
-        if ("content" in m && m.content && Array.isArray(m.content)) {
-          contentBlocks = m.content as ContentBlock[];
-          contentText = extractTextFromBlocks(contentBlocks);
-        } else if ("text" in m && m.text) {
-          contentText = m.text;
-        } else {
-          contentText = "";
-        }
-
-        return {
-          threadId: inserted.id,
-          ordinal: i,
-          role: m.role,
-          content: contentText,
-          contentBlocks: contentBlocks ? JSON.stringify(contentBlocks) : null,
-          messageModel: "model" in m ? (m.model ?? null) : null,
-          stopReason: "stop_reason" in m ? (m.stop_reason ?? null) : null,
-          usage: "usage" in m && m.usage ? JSON.stringify(m.usage) : null,
-          timestamp: new Date(m.timestamp),
-        };
-      })
+      processedMessages.map((m) => ({
+        threadId: inserted.id,
+        ordinal: m.ordinal,
+        role: m.role,
+        content: m.contentText,
+        contentBlocks: m.contentBlocks ? JSON.stringify(m.contentBlocks) : null,
+        messageModel: "model" in m.raw ? (m.raw.model ?? null) : null,
+        stopReason: "stop_reason" in m.raw ? (m.raw.stop_reason ?? null) : null,
+        usage: "usage" in m.raw && m.raw.usage ? JSON.stringify(m.raw.usage) : null,
+        timestamp: new Date(m.timestamp),
+      }))
     );
   }
 

@@ -1,11 +1,11 @@
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import Image from "next/image";
-import { eq, and, asc, desc, inArray, sql } from "drizzle-orm";
+import { eq, and, desc, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { message, thread, threadStar } from "@/lib/db/schema";
+import { thread, threadStar } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
-import { buildConversationSnapshot } from "@/lib/thread-snapshot";
+import { getOrBackfillSnapshot } from "@/lib/thread-snapshot";
 import { Nav } from "@/app/components/nav";
 import { Assistant } from "@/app/components/assistant";
 import { PageReveal } from "@/app/components/page-reveal";
@@ -44,6 +44,7 @@ export default async function ProfilePage({
       agent: thread.agent,
       model: thread.model,
       starCount: thread.starCount,
+      conversationSnapshot: thread.conversationSnapshot,
       messageCount: thread.messageCount,
       sessionTs: thread.sessionTs,
       createdAt: thread.createdAt,
@@ -52,34 +53,6 @@ export default async function ProfilePage({
     .where(and(eq(thread.ownerId, user.id), eq(thread.visibility, "public")))
     .orderBy(desc(thread.createdAt))
     .limit(50);
-
-  // Fetch messages for conversation snapshot rails
-  const threadIds = threads.map((t) => t.id);
-  const threadMessages =
-    threadIds.length === 0
-      ? []
-      : await db
-          .select({
-            threadId: message.threadId,
-            ordinal: message.ordinal,
-            role: message.role,
-            content: message.content,
-            contentBlocks: message.contentBlocks,
-            redacted: message.redacted,
-          })
-          .from(message)
-          .where(inArray(message.threadId, threadIds))
-          .orderBy(asc(message.threadId), asc(message.ordinal));
-
-  const messagesByThread = new Map<string, typeof threadMessages>();
-  for (const item of threadMessages) {
-    const existing = messagesByThread.get(item.threadId);
-    if (existing) {
-      existing.push(item);
-      continue;
-    }
-    messagesByThread.set(item.threadId, [item]);
-  }
 
   // Get ECG activity data
   const ecgData = await fetchEcgData(user.id);
@@ -149,14 +122,17 @@ export default async function ProfilePage({
               </p>
 
               <ProfileThreads
-                threads={threads.map((t) => ({
-                  ...t,
-                  sessionTs: t.sessionTs.toISOString(),
-                  starred: starredSlugs.has(t.slug),
-                  conversationSnapshot: buildConversationSnapshot(
-                    messagesByThread.get(t.id) ?? []
-                  ),
-                }))}
+                threads={await Promise.all(
+                  threads.map(async (t) => ({
+                    ...t,
+                    sessionTs: t.sessionTs.toISOString(),
+                    starred: starredSlugs.has(t.slug),
+                    conversationSnapshot: await getOrBackfillSnapshot(
+                      t.id,
+                      t.conversationSnapshot
+                    ),
+                  }))
+                )}
                 profileName={user.name}
                 isAuthenticated={isAuthenticated}
               />
