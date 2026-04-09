@@ -8,8 +8,9 @@ import {
   saveMessages,
   clearMessages,
   type ChatMessage,
+  type MessageSegment,
+  type ToolCall,
 } from "@/lib/assistant/store";
-import { getAllThreads } from "@/lib/search/db";
 import { search, init as initSearch } from "@/lib/search/index";
 import { LightningMark } from "@/app/components/icons";
 import {
@@ -83,12 +84,187 @@ export function AssistantSearchTrigger({
   );
 }
 
+// ---------------------------------------------------------------------------
+// Tool call sprite
+// ---------------------------------------------------------------------------
+
+const TOOL_LABELS: Record<string, string> = {
+  search_threads: "Searching",
+  get_thread: "Reading",
+  list_threads: "Listing",
+};
+
+function ToolSprite({ tool }: { tool: ToolCall }) {
+  const label = TOOL_LABELS[tool.name] || tool.name;
+  const detail =
+    tool.name === "search_threads"
+      ? `"${tool.input.query || ""}"`
+      : tool.name === "get_thread"
+        ? `"${tool.input.slug || ""}"`
+        : tool.input.agent
+          ? `${tool.input.agent}`
+          : "threads";
+
+  return (
+    <div className="my-1.5">
+      <span
+        className={`inline-flex items-center gap-1.5 rounded-[4px] border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider transition-all duration-300 ${
+          tool.status === "pending"
+            ? "border-accent/40 text-accent animate-border-pulse"
+            : "border-border text-fg-ghost"
+        }`}
+      >
+        {tool.status === "pending" && (
+          <span className="inline-block size-1.5 rounded-full bg-accent animate-blink" />
+        )}
+        <span>{label}</span>
+        <span className="normal-case tracking-normal text-fg-ghost">{detail}</span>
+      </span>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Client-side tool execution
+// ---------------------------------------------------------------------------
+
+function executeClientTool(name: string, input: Record<string, unknown>): string {
+  switch (name) {
+    case "search_threads": {
+      const query = (input.query as string) || "";
+      if (!query.trim()) return JSON.stringify({ results: [] });
+
+      const results = search(query, 10);
+      return JSON.stringify({
+        results: results.slice(0, 10).map((r) => ({
+          slug: r.slug,
+          title: r.title,
+          agent: r.agent,
+          model: r.model,
+          matches: r.matches.slice(0, 5).map((m) => ({
+            ordinal: m.ordinal,
+            role: m.role,
+            snippet: m.snippet,
+          })),
+        })),
+      });
+    }
+    default:
+      return JSON.stringify({ error: `Unknown client tool: ${name}` });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// SSE event types from the server
+// ---------------------------------------------------------------------------
+
+type SSEEvent =
+  | { type: "text"; text: string }
+  | { type: "tool_use"; id: string; name: string; input: Record<string, unknown>; locality: "client" | "server" }
+  | { type: "tool_result"; name: string }
+  | { type: "pause"; assistantContent: unknown[]; serverToolResults?: { type: "tool_result"; tool_use_id: string; content: string }[] }
+  | { type: "error"; message: string };
+
+// ---------------------------------------------------------------------------
+// Segment helpers
+// ---------------------------------------------------------------------------
+
+/** Append text to segments, merging with the last text segment if possible */
+function appendText(segments: MessageSegment[], text: string): MessageSegment[] {
+  const copy = [...segments];
+  const last = copy[copy.length - 1];
+  if (last && last.type === "text") {
+    copy[copy.length - 1] = { type: "text", content: last.content + text };
+  } else {
+    copy.push({ type: "text", content: text });
+  }
+  return copy;
+}
+
+/** Add a tool segment */
+function appendTool(segments: MessageSegment[], tool: ToolCall): MessageSegment[] {
+  return [...segments, { type: "tool", tool }];
+}
+
+/** Mark a tool as complete by id */
+function markToolComplete(segments: MessageSegment[], toolId: string): MessageSegment[] {
+  return segments.map((s) =>
+    s.type === "tool" && s.tool.id === toolId
+      ? { type: "tool", tool: { ...s.tool, status: "complete" as const } }
+      : s
+  );
+}
+
+/** Mark a tool as complete by name (first pending match) */
+function markToolCompleteByName(segments: MessageSegment[], toolName: string): MessageSegment[] {
+  let found = false;
+  return segments.map((s) => {
+    if (!found && s.type === "tool" && s.tool.name === toolName && s.tool.status === "pending") {
+      found = true;
+      return { type: "tool", tool: { ...s.tool, status: "complete" as const } };
+    }
+    return s;
+  });
+}
+
+/** Get flattened text content from segments */
+function segmentsToText(segments: MessageSegment[]): string {
+  return segments
+    .filter((s): s is Extract<MessageSegment, { type: "text" }> => s.type === "text")
+    .map((s) => s.content)
+    .join("");
+}
+
+// ---------------------------------------------------------------------------
+// Segment renderer
+// ---------------------------------------------------------------------------
+
+function AssistantSegments({
+  segments,
+  isStreaming,
+}: {
+  segments: MessageSegment[];
+  isStreaming: boolean;
+}) {
+  const lastTextIdx = segments.reduce((acc, s, i) => (s.type === "text" ? i : acc), -1);
+
+  return (
+    <>
+      {segments.map((segment, i) => {
+        if (segment.type === "tool") {
+          return <ToolSprite key={segment.tool.id} tool={segment.tool} />;
+        }
+        const isLast = i === lastTextIdx && isStreaming;
+        return (
+          <Streamdown
+            key={`text-${i}`}
+            components={sdComponents}
+            mode={isLast ? "streaming" : "static"}
+            animated={
+              isLast
+                ? { sep: "word", duration: 80, stagger: 15, animation: "sd-fadeIn" }
+                : false
+            }
+            caret={isLast ? "block" : undefined}
+          >
+            {segment.content}
+          </Streamdown>
+        );
+      })}
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
+
 export function Assistant() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
-  const [searchReady, setSearchReady] = useState(false);
+  const [, setSearchReady] = useState(false);
   const [threadContext, setThreadContext] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -191,97 +367,40 @@ export function Assistant() {
     };
   }, [open]);
 
-  const buildContext = useCallback(
-    async (userMessage: string): Promise<{ context: string; activeThread: string | null }> => {
-      const parts: string[] = [];
+  // ---------------------------------------------------------------------------
+  // Stream processing
+  // ---------------------------------------------------------------------------
 
-      // If opened on a specific thread, that's the primary context
-      if (threadContext) {
-        parts.push(threadContext);
-      }
-
-      try {
-        const threads = await getAllThreads();
-        if (threads.length > 0) {
-          parts.push(
-            `The user has ${threads.length} stored conversations:\n` +
-              threads
-                .slice(0, 50)
-                .map(
-                  (t) =>
-                    `- "${t.title || "Untitled"}" (${t.agent}, ${t.model || "unknown model"}, ${t.messageCount} messages, ${t.tags.length > 0 ? `tags: ${t.tags.join(", ")}` : "no tags"})`
-                )
-                .join("\n")
-          );
-          if (threads.length > 50) {
-            parts.push(`...and ${threads.length - 50} more conversations.`);
-          }
-        }
-      } catch {}
-
-      if (searchReady && userMessage.trim()) {
-        try {
-          const results = search(userMessage, 10);
-          if (results.length > 0) {
-            parts.push(
-              "\nRelevant conversation excerpts matching the query:\n" +
-                results
-                  .slice(0, 5)
-                  .map(
-                    (r) =>
-                      `Thread "${r.title || "Untitled"}":\n` +
-                      r.matches
-                        .slice(0, 3)
-                        .map((m) => `  [${m.role}]: ${m.snippet}`)
-                        .join("\n")
-                  )
-                  .join("\n\n")
-            );
-          }
-        } catch {}
-      }
-
-      return {
-        context: parts.join("\n\n"),
-        activeThread: threadContext ? "true" : null,
-      };
-    },
-    [searchReady, threadContext]
-  );
-
-  const handleSend = async () => {
-    const text = input.trim();
-    if (!text || streaming) return;
-
-    const userMsg: ChatMessage = { role: "user", content: text };
-    const updated = [...messages, userMsg];
-    setMessages(updated);
-    saveMessages(updated);
-    setInput("");
-    setStreaming(true);
-
-    const { context, activeThread } = await buildContext(text);
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    try {
-      const res = await fetch("/api/assistant", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: updated.map((m) => ({ role: m.role, content: m.content })),
-          context,
-          activeThread,
-        }),
-        signal: controller.signal,
-      });
-
-      if (!res.ok || !res.body) throw new Error("Request failed");
-
-      const reader = res.body.getReader();
+  const processStream = useCallback(
+    async (
+      res: Response,
+      segmentsRef: { current: MessageSegment[] },
+    ): Promise<{
+      clientToolCalls: { id: string; name: string; input: Record<string, unknown> }[];
+      assistantContent: unknown[] | null;
+      serverToolResults: { type: "tool_result"; tool_use_id: string; content: string }[];
+    }> => {
+      const reader = res.body!.getReader();
       const decoder = new TextDecoder();
-      let assistantContent = "";
       let buffer = "";
+      const pendingClientTools: { id: string; name: string; input: Record<string, unknown> }[] = [];
+      let pausedAssistantContent: unknown[] | null = null;
+      let pausedServerToolResults: { type: "tool_result"; tool_use_id: string; content: string }[] = [];
+
+      const updateMessage = () => {
+        const segs = [...segmentsRef.current];
+        const text = segmentsToText(segs);
+        setMessages((prev) => {
+          const copy = [...prev];
+          const lastIdx = copy.length - 1;
+          if (lastIdx >= 0 && copy[lastIdx].role === "assistant") {
+            copy[lastIdx] = { ...copy[lastIdx], content: text, segments: segs };
+          } else {
+            copy.push({ role: "assistant", content: text, segments: segs });
+          }
+          return copy;
+        });
+      };
 
       while (true) {
         const { done, value } = await reader.read();
@@ -297,22 +416,149 @@ export function Assistant() {
           if (data === "[DONE]") break;
 
           try {
-            const parsed = JSON.parse(data);
-            if (typeof parsed === "string") {
-              assistantContent += parsed;
-              setMessages((prev) => {
-                const copy = [...prev];
-                const lastIdx = copy.length - 1;
-                if (lastIdx >= 0 && copy[lastIdx].role === "assistant") {
-                  copy[lastIdx] = { ...copy[lastIdx], content: assistantContent };
-                } else {
-                  copy.push({ role: "assistant", content: assistantContent });
+            const event = JSON.parse(data) as SSEEvent;
+
+            switch (event.type) {
+              case "text": {
+                segmentsRef.current = appendText(segmentsRef.current, event.text);
+                updateMessage();
+                break;
+              }
+
+              case "tool_use": {
+                const tool: ToolCall = {
+                  id: event.id,
+                  name: event.name,
+                  input: event.input,
+                  locality: event.locality,
+                  status: "pending",
+                };
+                segmentsRef.current = appendTool(segmentsRef.current, tool);
+                updateMessage();
+
+                if (event.locality === "client") {
+                  pendingClientTools.push({ id: event.id, name: event.name, input: event.input });
                 }
-                return copy;
-              });
+                break;
+              }
+
+              case "tool_result": {
+                segmentsRef.current = markToolCompleteByName(segmentsRef.current, event.name);
+                updateMessage();
+                break;
+              }
+
+              case "pause": {
+                pausedAssistantContent = event.assistantContent;
+                pausedServerToolResults = event.serverToolResults || [];
+                break;
+              }
+
+              case "error": {
+                segmentsRef.current = appendText(segmentsRef.current, `\n\n_Error: ${event.message}_`);
+                updateMessage();
+                break;
+              }
             }
           } catch {}
         }
+      }
+
+      return {
+        clientToolCalls: pendingClientTools,
+        assistantContent: pausedAssistantContent,
+        serverToolResults: pausedServerToolResults,
+      };
+    },
+    []
+  );
+
+  // ---------------------------------------------------------------------------
+  // Send handler with tool-use continuation loop
+  // ---------------------------------------------------------------------------
+
+  const handleSend = async () => {
+    const text = input.trim();
+    if (!text || streaming) return;
+
+    const userMsg: ChatMessage = { role: "user", content: text };
+    const updated = [...messages, userMsg];
+    setMessages(updated);
+    saveMessages(updated);
+    setInput("");
+    setStreaming(true);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    const apiMessages: Array<{ role: string; content: string }> = updated.map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
+
+    const segmentsRef = { current: [] as MessageSegment[] };
+
+    try {
+      let continuation: {
+        assistantContent: unknown[];
+        toolResults: { tool_use_id: string; content: string }[];
+      } | undefined;
+
+      for (let iteration = 0; iteration < 10; iteration++) {
+        const res = await fetch("/api/assistant", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: apiMessages,
+            activeThread: threadContext ? "true" : null,
+            continuation,
+          }),
+          signal: controller.signal,
+        });
+
+        if (!res.ok || !res.body) throw new Error("Request failed");
+
+        const { clientToolCalls, assistantContent, serverToolResults } = await processStream(
+          res,
+          segmentsRef,
+        );
+
+        if (clientToolCalls.length === 0 || !assistantContent) {
+          break;
+        }
+
+        // Resolve client-side tools
+        const resolvedToolResults = clientToolCalls.map((tc) => {
+          const result = executeClientTool(tc.name, tc.input);
+
+          // Mark tool as complete in segments
+          segmentsRef.current = markToolComplete(segmentsRef.current, tc.id);
+          const segs = [...segmentsRef.current];
+          const flatText = segmentsToText(segs);
+          setMessages((prev) => {
+            const copy = [...prev];
+            const lastIdx = copy.length - 1;
+            if (lastIdx >= 0 && copy[lastIdx].role === "assistant") {
+              copy[lastIdx] = { ...copy[lastIdx], content: flatText, segments: segs };
+            }
+            return copy;
+          });
+
+          return { tool_use_id: tc.id, content: result };
+        });
+
+        continuation = {
+          assistantContent,
+          toolResults: [
+            ...serverToolResults,
+            ...resolvedToolResults.map((tr) => ({
+              type: "tool_result" as const,
+              ...tr,
+            })),
+          ],
+        };
+
+        // Don't reset segments — new text from continuation appends after the tool sprites
       }
 
       setMessages((prev) => {
@@ -411,31 +657,38 @@ export function Assistant() {
                     <Conversation.UserMessage>{msg.content}</Conversation.UserMessage>
                   ) : (
                     <Conversation.AssistantMessage>
-                      <Streamdown
-                        components={sdComponents}
-                        mode={
-                          streaming && i === messages.length - 1
-                            ? "streaming"
-                            : "static"
-                        }
-                        animated={
-                          streaming && i === messages.length - 1
-                            ? {
-                                sep: "word",
-                                duration: 80,
-                                stagger: 15,
-                                animation: "sd-fadeIn",
-                              }
-                            : false
-                        }
-                        caret={
-                          streaming && i === messages.length - 1
-                            ? "block"
-                            : undefined
-                        }
-                      >
-                        {msg.content}
-                      </Streamdown>
+                      {msg.segments && msg.segments.length > 0 ? (
+                        <AssistantSegments
+                          segments={msg.segments}
+                          isStreaming={streaming && i === messages.length - 1}
+                        />
+                      ) : (
+                        <Streamdown
+                          components={sdComponents}
+                          mode={
+                            streaming && i === messages.length - 1
+                              ? "streaming"
+                              : "static"
+                          }
+                          animated={
+                            streaming && i === messages.length - 1
+                              ? {
+                                  sep: "word",
+                                  duration: 80,
+                                  stagger: 15,
+                                  animation: "sd-fadeIn",
+                                }
+                              : false
+                          }
+                          caret={
+                            streaming && i === messages.length - 1
+                              ? "block"
+                              : undefined
+                          }
+                        >
+                          {msg.content}
+                        </Streamdown>
+                      )}
                     </Conversation.AssistantMessage>
                   )}
                 </div>

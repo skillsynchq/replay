@@ -1,8 +1,21 @@
 const STORAGE_KEY = "replay-assistant-chat";
 
+export interface ToolCall {
+  id: string;
+  name: string;
+  input: Record<string, unknown>;
+  locality: "client" | "server";
+  status: "pending" | "complete";
+}
+
+export type MessageSegment =
+  | { type: "text"; content: string }
+  | { type: "tool"; tool: ToolCall };
+
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  segments?: MessageSegment[];
 }
 
 export function loadMessages(): ChatMessage[] {
