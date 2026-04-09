@@ -256,7 +256,10 @@ export async function POST(request: Request) {
     "Be concise and direct. Use markdown formatting. Never use emojis.",
     "Answer what the user asks. Do not suggest next steps, offer unsolicited help, or ask what they'd like to do. Just answer their question and stop.",
     "You have tools to search, list, and read the user's conversations. Use them when you need information — don't guess or hallucinate conversation content.",
-    "When referencing conversations, mention their titles and include the slug so the user can navigate to them.",
+    "When referencing conversations, always use markdown links with the thread title as display text: [Title](/t/slug).",
+    "To reference specific messages, append the message hash: [Title #m5](/t/slug#m5). For message ranges: [Title #m3-m7](/t/slug#m3-m7).",
+    "Always use the full /t/slug path in links, even for the thread the user is currently viewing. Never use hash-only links like (#m5).",
+    "Never output raw slugs — always wrap in a markdown link.",
   ];
 
   if (activeThread) {

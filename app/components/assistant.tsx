@@ -27,7 +27,33 @@ const sdComponents = {
   p: ({ children, ...p }: any) => <p {...p} className="mb-1.5 text-[13px] leading-relaxed text-fg-muted">{children}</p>,
   strong: ({ children, ...p }: any) => <strong {...p} className="font-medium text-fg">{children}</strong>,
   em: ({ children, ...p }: any) => <em {...p} className="text-fg-muted">{children}</em>,
-  a: ({ href, children, ...p }: any) => <a {...p} href={href} target="_blank" rel="noopener noreferrer" className="text-accent hover:text-accent-hover transition-colors duration-150">{children}</a>,
+  a: ({ href, children, ...p }: any) => {
+    if (href && href.startsWith("/t/")) {
+      return (
+        <a
+          {...p}
+          href={href}
+          onClick={(e: React.MouseEvent) => {
+            e.preventDefault();
+            window.dispatchEvent(new CustomEvent("close-assistant"));
+            // Check if we're already on this thread page — just update hash
+            const [path, hash] = href.split("#");
+            if (hash && window.location.pathname === path) {
+              window.history.replaceState(null, "", `#${hash}`);
+              window.dispatchEvent(new HashChangeEvent("hashchange"));
+            } else {
+              window.location.href = href;
+            }
+          }}
+          className="inline-flex items-center gap-0.5 text-accent hover:text-accent-hover transition-colors duration-150 cursor-pointer"
+        >
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-60"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+          {children}
+        </a>
+      );
+    }
+    return <a {...p} href={href} target="_blank" rel="noopener noreferrer" className="text-accent hover:text-accent-hover transition-colors duration-150">{children}</a>;
+  },
   pre: ({ children, ...p }: any) => <pre {...p} className="my-1.5 overflow-x-auto border border-border bg-surface p-2.5 font-mono text-[11px] leading-[1.7] text-fg-muted rounded-[4px]">{children}</pre>,
   inlineCode: ({ children, ...p }: any) => <code {...p} className="border border-border bg-surface px-1 py-0.5 font-mono text-[11px] text-fg-subtle rounded-[2px]">{children}</code>,
   ul: ({ children, ...p }: any) => <ul {...p} className="mb-1.5 ml-3 list-disc space-y-0.5 text-[13px] text-fg-muted marker:text-fg-faint">{children}</ul>,
@@ -289,8 +315,15 @@ export function Assistant() {
       setThreadContext(detail);
       setOpen(true);
     }
+    function handleClose() {
+      setOpen(false);
+    }
     window.addEventListener("open-assistant", handleOpen);
-    return () => window.removeEventListener("open-assistant", handleOpen);
+    window.addEventListener("close-assistant", handleClose);
+    return () => {
+      window.removeEventListener("open-assistant", handleOpen);
+      window.removeEventListener("close-assistant", handleClose);
+    };
   }, []);
 
   useEffect(() => {
