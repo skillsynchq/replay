@@ -2,6 +2,7 @@
 
 import { prepare, layout } from "@chenglou/pretext";
 import type { PreparedText } from "@chenglou/pretext";
+import type { ContentBlock, ToolUseBlock } from "@/app/components/content-renderer";
 
 // ---------------------------------------------------------------------------
 // Typography constants — must match globals.css + component CSS exactly
@@ -122,16 +123,7 @@ function markdownOverhead(text: string): number {
 // Block-level height estimation
 // ---------------------------------------------------------------------------
 
-interface ContentBlock {
-  type: string;
-  text?: string;
-  thinking?: string;
-  name?: string;
-  id?: string;
-  input?: Record<string, unknown>;
-  source?: { type: string; media_type: string; data: string };
-  content?: string | unknown[];
-}
+// ContentBlock imported from @/app/components/content-renderer
 
 function estimateTextBlock(
   key: string,
@@ -156,7 +148,7 @@ function estimateThinkingBlock(): number {
   return COLLAPSED_PILL;
 }
 
-function estimateToolUseBlock(block: ContentBlock): number {
+function estimateToolUseBlock(block: ToolUseBlock): number {
   if (block.name === "Edit") {
     const input = block.input ?? {};
     const oldStr = (input.old_string as string) ?? "";
@@ -183,7 +175,7 @@ export interface MessageData {
   ordinal: number;
   role: string;
   content: string;
-  contentBlocks: Record<string, unknown>[] | null;
+  contentBlocks: ContentBlock[] | null;
   redacted: boolean;
 }
 
@@ -201,7 +193,7 @@ export function estimateMessageHeight(
   const basePadding = isUser ? USER_MESSAGE_PADDING : ASSISTANT_MESSAGE_PADDING;
 
   if (msg.contentBlocks && msg.contentBlocks.length > 0) {
-    const blocks = msg.contentBlocks as unknown as ContentBlock[];
+    const blocks = msg.contentBlocks;
     let total = 0;
     let blockCount = 0;
 

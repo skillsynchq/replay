@@ -13,7 +13,7 @@ export async function Nav({ minimal }: { minimal?: boolean } = {}) {
       user = {
         name: session.user.name,
         image: session.user.image ?? null,
-        username: (session.user as Record<string, unknown>).username as string | null ?? null,
+        username: session.user.username ?? null,
       };
     }
   } catch {

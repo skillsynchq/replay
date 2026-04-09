@@ -1,6 +1,7 @@
 import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { message, thread } from "@/lib/db/schema";
+import type { ToolUseBlock, ToolResultBlock, ContentBlock } from "@/app/components/content-renderer";
 
 export type ConversationSnapshotKind = "user" | "assistant" | "tool";
 
@@ -13,18 +14,12 @@ export type ConversationSnapshot = ConversationSnapshotSegment[];
 
 const USER_WEIGHT_MULTIPLIER = 4;
 
-interface SnapshotMessage {
+export interface SnapshotMessage {
   role: string;
   content: string;
+  /** Content blocks from DB (JSONB) or Zod validation — cast to ContentBlock[] internally */
   contentBlocks: unknown;
   redacted?: boolean;
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return null;
-  }
-  return value as Record<string, unknown>;
 }
 
 function estimateLines(
@@ -60,25 +55,19 @@ function textWeight(
   return base + lines * lineWeight;
 }
 
-function extractToolResultText(content: unknown): string {
+function extractToolResultText(content: ToolResultBlock["content"]): string {
   if (typeof content === "string") return content;
-  if (!Array.isArray(content)) return "";
 
   return content
-    .map((item) => asRecord(item))
-    .filter(
-      (item): item is Record<string, unknown> =>
-        !!item && item.type === "text" && typeof item.text === "string"
-    )
-    .map((item) => item.text as string)
+    .filter((item) => item.type === "text" && typeof item.text === "string")
+    .map((item) => item.text!)
     .join("\n");
 }
 
-function toolWeight(block: Record<string, unknown>): number {
+function toolWeight(block: ToolUseBlock | ToolResultBlock): number {
   if (block.type === "tool_use") {
-    const name = typeof block.name === "string" ? block.name : "tool";
     const input = block.input ? JSON.stringify(block.input, null, 2) : "";
-    return textWeight(`${name}\n${input}`, {
+    return textWeight(`${block.name}\n${input}`, {
       charsPerLine: 42,
       lineWeight: 9,
       base: 12,
@@ -117,7 +106,7 @@ function pushSegment(
 }
 
 function blockWeight(
-  block: Record<string, unknown>,
+  block: ContentBlock,
   role: string,
   skipUserImageReferenceText: boolean
 ): { kind: ConversationSnapshotKind; weight: number } | null {
@@ -126,14 +115,13 @@ function blockWeight(
 
   switch (block.type) {
     case "text": {
-      const text = typeof block.text === "string" ? block.text : "";
       if (
         skipUserImageReferenceText &&
-        text.match(/^\[Image.*source:/)
+        block.text.match(/^\[Image.*source:/)
       ) {
         return null;
       }
-      const weight = textWeight(text, {
+      const weight = textWeight(block.text, {
         charsPerLine: role === "user" ? 50 : 58,
         lineWeight: 10,
         base: 8,
@@ -142,15 +130,12 @@ function blockWeight(
       return weight > 0 ? { kind: fallbackKind, weight } : null;
     }
     case "thinking": {
-      const weight = textWeight(
-        typeof block.thinking === "string" ? block.thinking : "",
-        {
-          charsPerLine: 60,
-          lineWeight: 6,
-          base: 12,
-          preserveWhitespace: true,
-        }
-      );
+      const weight = textWeight(block.thinking, {
+        charsPerLine: 60,
+        lineWeight: 6,
+        base: 12,
+        preserveWhitespace: true,
+      });
       return weight > 0 ? { kind: "assistant", weight } : null;
     }
     case "tool_use":
@@ -177,19 +162,14 @@ export function buildConversationSnapshot(
     }
 
     if (Array.isArray(message.contentBlocks) && message.contentBlocks.length > 0) {
+      const blocks = message.contentBlocks as ContentBlock[];
       const skipUserImageReferenceText =
         message.role === "user" &&
-        message.contentBlocks.some((block) => {
-          const item = asRecord(block);
-          return item?.type === "image";
-        });
+        blocks.some((block) => block.type === "image");
 
       let addedBlock = false;
 
-      for (const rawBlock of message.contentBlocks) {
-        const block = asRecord(rawBlock);
-        if (!block) continue;
-
+      for (const block of blocks) {
         const segment = blockWeight(
           block,
           message.role,

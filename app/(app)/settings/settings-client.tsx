@@ -33,11 +33,11 @@ export function SettingsClient({
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  if (user !== initialUser && initialUser.id !== user.id) {
     setUser(initialUser);
     setUsername(initialUser.username ?? "");
     setAvailable(initialUser.username ? true : null);
-  }, [initialUser]);
+  }
 
   const checkAvailability = useCallback(
     async (value: string) => {

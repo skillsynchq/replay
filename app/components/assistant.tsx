@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { Streamdown, type Components } from "streamdown";
+import { useState, useEffect, useRef, useCallback, type JSX } from "react";
+import { Streamdown, type Components, type ExtraProps } from "streamdown";
 import "streamdown/styles.css";
 import {
   loadMessages,
@@ -19,15 +19,16 @@ import {
 } from "@/app/components/conversation";
 
 // Match the project's design system — same styles as markdown.tsx
-/* eslint-disable @typescript-eslint/no-explicit-any */
+type EP<T> = T & ExtraProps;
+
 const sdComponents = {
-  h1: ({ children, ...p }: any) => <h1 {...p} className="mt-4 mb-1.5 text-[15px] font-medium text-fg">{children}</h1>,
-  h2: ({ children, ...p }: any) => <h2 {...p} className="mt-3 mb-1 text-[14px] font-medium text-fg">{children}</h2>,
-  h3: ({ children, ...p }: any) => <h3 {...p} className="mt-2 mb-1 text-[13px] font-medium text-fg">{children}</h3>,
-  p: ({ children, ...p }: any) => <p {...p} className="mb-1.5 text-[13px] leading-relaxed text-fg-muted">{children}</p>,
-  strong: ({ children, ...p }: any) => <strong {...p} className="font-medium text-fg">{children}</strong>,
-  em: ({ children, ...p }: any) => <em {...p} className="text-fg-muted">{children}</em>,
-  a: ({ href, children, ...p }: any) => {
+  h1: ({ children, ...p }: EP<JSX.IntrinsicElements["h1"]>) => <h1 {...p} className="mt-4 mb-1.5 text-[15px] font-medium text-fg">{children}</h1>,
+  h2: ({ children, ...p }: EP<JSX.IntrinsicElements["h2"]>) => <h2 {...p} className="mt-3 mb-1 text-[14px] font-medium text-fg">{children}</h2>,
+  h3: ({ children, ...p }: EP<JSX.IntrinsicElements["h3"]>) => <h3 {...p} className="mt-2 mb-1 text-[13px] font-medium text-fg">{children}</h3>,
+  p: ({ children, ...p }: EP<JSX.IntrinsicElements["p"]>) => <p {...p} className="mb-1.5 text-[13px] leading-relaxed text-fg-muted">{children}</p>,
+  strong: ({ children, ...p }: EP<JSX.IntrinsicElements["strong"]>) => <strong {...p} className="font-medium text-fg">{children}</strong>,
+  em: ({ children, ...p }: EP<JSX.IntrinsicElements["em"]>) => <em {...p} className="text-fg-muted">{children}</em>,
+  a: ({ href, children, ...p }: EP<JSX.IntrinsicElements["a"]>) => {
     if (href && href.startsWith("/t/")) {
       return (
         <a
@@ -54,14 +55,14 @@ const sdComponents = {
     }
     return <a {...p} href={href} target="_blank" rel="noopener noreferrer" className="text-accent hover:text-accent-hover transition-colors duration-150">{children}</a>;
   },
-  pre: ({ children, ...p }: any) => <pre {...p} className="my-1.5 overflow-x-auto border border-border bg-surface p-2.5 font-mono text-[11px] leading-[1.7] text-fg-muted rounded-[4px]">{children}</pre>,
-  inlineCode: ({ children, ...p }: any) => <code {...p} className="border border-border bg-surface px-1 py-0.5 font-mono text-[11px] text-fg-subtle rounded-[2px]">{children}</code>,
-  ul: ({ children, ...p }: any) => <ul {...p} className="mb-1.5 ml-3 list-disc space-y-0.5 text-[13px] text-fg-muted marker:text-fg-faint">{children}</ul>,
-  ol: ({ children, ...p }: any) => <ol {...p} className="mb-1.5 ml-3 list-decimal space-y-0.5 text-[13px] text-fg-muted marker:text-fg-faint">{children}</ol>,
-  li: ({ children, ...p }: any) => <li {...p} className="text-[13px] leading-relaxed text-fg-muted">{children}</li>,
-  blockquote: ({ children, ...p }: any) => <blockquote {...p} className="my-1.5 border-l-2 border-fg-faint pl-2.5 text-fg-ghost">{children}</blockquote>,
-  hr: (p: any) => <hr {...p} className="my-3 border-border" />,
-} as unknown as Components;
+  pre: ({ children, ...p }: EP<JSX.IntrinsicElements["pre"]>) => <pre {...p} className="my-1.5 overflow-x-auto border border-border bg-surface p-2.5 font-mono text-[11px] leading-[1.7] text-fg-muted rounded-[4px]">{children}</pre>,
+  inlineCode: ({ children, ...p }: EP<JSX.IntrinsicElements["code"]>) => <code {...p} className="border border-border bg-surface px-1 py-0.5 font-mono text-[11px] text-fg-subtle rounded-[2px]">{children}</code>,
+  ul: ({ children, ...p }: EP<JSX.IntrinsicElements["ul"]>) => <ul {...p} className="mb-1.5 ml-3 list-disc space-y-0.5 text-[13px] text-fg-muted marker:text-fg-faint">{children}</ul>,
+  ol: ({ children, ...p }: EP<JSX.IntrinsicElements["ol"]>) => <ol {...p} className="mb-1.5 ml-3 list-decimal space-y-0.5 text-[13px] text-fg-muted marker:text-fg-faint">{children}</ol>,
+  li: ({ children, ...p }: EP<JSX.IntrinsicElements["li"]>) => <li {...p} className="text-[13px] leading-relaxed text-fg-muted">{children}</li>,
+  blockquote: ({ children, ...p }: EP<JSX.IntrinsicElements["blockquote"]>) => <blockquote {...p} className="my-1.5 border-l-2 border-fg-faint pl-2.5 text-fg-ghost">{children}</blockquote>,
+  hr: (p: EP<JSX.IntrinsicElements["hr"]>) => <hr {...p} className="my-3 border-border" />,
+} satisfies Components;
 
 /** Dispatch this event from any trigger button to open the assistant sidebar */
 export function openAssistant(threadContext?: string) {
@@ -287,7 +288,7 @@ function AssistantSegments({
 
 export function Assistant() {
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => loadMessages());
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [threadContext, setThreadContext] = useState<string | null>(null);
@@ -315,10 +316,6 @@ export function Assistant() {
     }
 
     await searchInitRef.current;
-  }, []);
-
-  useEffect(() => {
-    setMessages(loadMessages());
   }, []);
 
   useEffect(() => {

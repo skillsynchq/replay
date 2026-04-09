@@ -1,8 +1,7 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { useEffect } from "react";
 import { authClient } from "@/lib/auth-client";
 
 function getLastLoginMethod(): string | null {
@@ -18,14 +17,10 @@ function LoginFormInner() {
   const searchParams = useSearchParams();
   const redirectUri = searchParams.get("redirect_uri");
   const state = searchParams.get("state");
-  const [lastMethod, setLastMethod] = useState<string | null>(null);
+  const [lastMethod] = useState(() => getLastLoginMethod());
   const [loadingProvider, setLoadingProvider] = useState<
     "github" | "google" | null
   >(null);
-
-  useEffect(() => {
-    setLastMethod(getLastLoginMethod());
-  }, []);
 
   // If CLI params are present, store them in a cookie before OAuth redirect
   useEffect(() => {

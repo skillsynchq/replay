@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
       name: session.user.name,
       email: session.user.email,
       image: session.user.image,
-      username: (session.user as Record<string, unknown>).username ?? null,
+      username: session.user.username ?? null,
     },
   });
 }

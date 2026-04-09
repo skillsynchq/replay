@@ -146,6 +146,10 @@ export function DashboardClient({
   const [deletedSlugs, setDeletedSlugs] = useState<Set<string>>(new Set());
   const { results, syncing, isSearching } = useThreadSearch(query);
 
+  useEffect(() => {
+    setQuery(initialQuery);
+  }, [initialQuery]);
+
   const handleDelete = useCallback(async (slug: string) => {
     const thread = initialData.threads.find((t) => t.slug === slug);
     const confirmed = window.confirm(
@@ -163,10 +167,6 @@ export function DashboardClient({
       });
     }
   }, [initialData.threads]);
-
-  useEffect(() => {
-    setQuery(initialQuery);
-  }, [initialQuery]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {

@@ -23,9 +23,7 @@ export default async function SettingsPage({
         name: session.user.name,
         email: session.user.email,
         image: session.user.image ?? null,
-        username:
-          ((session.user as Record<string, unknown>).username as string | null) ??
-          null,
+        username: session.user.username ?? null,
       }}
       welcome={welcome}
     />

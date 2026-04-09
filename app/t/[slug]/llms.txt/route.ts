@@ -4,36 +4,7 @@ import { thread, message, threadShare } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { buildPipeline, processDeep } from "@/lib/thread-processors";
-
-// --- Content block types (mirrors content-renderer.tsx) ---
-
-interface TextBlock {
-  type: "text";
-  text: string;
-}
-
-interface ThinkingBlock {
-  type: "thinking";
-  thinking: string;
-}
-
-interface ToolUseBlock {
-  type: "tool_use";
-  id: string;
-  name: string;
-  input: Record<string, unknown>;
-}
-
-interface ToolResultBlock {
-  type: "tool_result";
-  tool_use_id: string;
-  content:
-    | string
-    | Array<{ type: string; text?: string }>;
-  is_error?: boolean;
-}
-
-type ContentBlock = TextBlock | ThinkingBlock | ToolUseBlock | ToolResultBlock;
+import type { ContentBlock } from "@/app/components/content-renderer";
 
 // --- Markdown rendering ---
 

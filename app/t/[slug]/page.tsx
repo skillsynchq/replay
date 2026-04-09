@@ -8,6 +8,7 @@ import { buildPipeline, processDeep } from "@/lib/thread-processors";
 import { headers } from "next/headers";
 import { Nav } from "@/app/components/nav";
 import { Assistant } from "@/app/components/assistant";
+import type { ContentBlock } from "@/app/components/content-renderer";
 import { ThreadViewerClient } from "./client";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://replay.md";
@@ -236,7 +237,7 @@ export default async function ThreadPage({
               contentBlocks:
                 m.redacted && !isOwner
                   ? null
-                  : ((m.contentBlocks ?? null) as Record<string, unknown>[] | null),
+                  : (m.contentBlocks ?? null) as ContentBlock[] | null,
               model: m.messageModel,
               stopReason: m.stopReason,
               usage: m.usage as { input_tokens: number; output_tokens: number } | null,

@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { requireAuth } from "@/lib/auth-helpers";
-import { THREAD_TOOLS, executeServerTool } from "@/lib/ai/tools";
+import { THREAD_TOOLS, executeServerTool, type ToolInput } from "@/lib/ai/tools";
 
 const client = new Anthropic();
 
@@ -245,7 +245,7 @@ async function runAgentLoop(
     for (const toolUse of serverTools) {
       const result = await executeServerTool(
         toolUse.name,
-        toolUse.input as Record<string, unknown>,
+        toolUse.input as ToolInput,
         userId
       );
       toolResultBlocks.push({

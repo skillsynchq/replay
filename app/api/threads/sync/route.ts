@@ -3,6 +3,7 @@ import { eq, and, gt, desc, asc, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { thread, message } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth-helpers";
+import type { ContentBlock } from "@/app/components/content-renderer";
 
 /**
  * Build searchable text from a message's content + contentBlocks.
@@ -10,34 +11,32 @@ import { requireAuth } from "@/lib/auth-helpers";
  */
 function buildSearchableContent(
   plainContent: string,
-  contentBlocks: unknown
+  contentBlocks: ContentBlock[] | null
 ): string {
-  if (!contentBlocks || !Array.isArray(contentBlocks)) {
+  if (!contentBlocks || contentBlocks.length === 0) {
     return plainContent;
   }
 
   const parts: string[] = [];
 
   for (const block of contentBlocks) {
-    const b = block as Record<string, unknown>;
-    if (b.type === "text" && typeof b.text === "string") {
-      parts.push(b.text);
-    } else if (b.type === "tool_use" && b.input && typeof b.input === "object") {
-      // Index tool input values (file paths, commands, etc.)
-      const values = Object.values(b.input as Record<string, unknown>);
+    if (block.type === "text") {
+      parts.push(block.text);
+    } else if (block.type === "tool_use") {
+      const values = Object.values(block.input);
       for (const v of values) {
         if (typeof v === "string") {
           parts.push(v);
         }
       }
-    } else if (b.type === "tool_result") {
+    } else if (block.type === "tool_result") {
       // Truncate tool results to keep index size reasonable
-      if (typeof b.content === "string") {
-        parts.push(b.content.slice(0, 500));
-      } else if (Array.isArray(b.content)) {
-        for (const item of b.content as Array<Record<string, unknown>>) {
+      if (typeof block.content === "string") {
+        parts.push(block.content.slice(0, 500));
+      } else {
+        for (const item of block.content) {
           if (item.type === "text" && typeof item.text === "string") {
-            parts.push((item.text as string).slice(0, 500));
+            parts.push(item.text.slice(0, 500));
           }
         }
       }
@@ -138,7 +137,7 @@ export async function GET(request: NextRequest) {
     messages: (messagesByThread.get(t.id) ?? []).map((m) => ({
       ordinal: m.ordinal,
       role: m.role,
-      content: buildSearchableContent(m.content, m.contentBlocks),
+      content: buildSearchableContent(m.content, m.contentBlocks as ContentBlock[] | null),
     })),
   }));
 

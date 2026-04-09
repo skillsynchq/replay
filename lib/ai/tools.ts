@@ -76,17 +76,40 @@ export const THREAD_TOOLS: Anthropic.Messages.Tool[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Tool input types
+// ---------------------------------------------------------------------------
+
+interface GetThreadInput {
+  slug: string;
+}
+
+interface ListThreadsInput {
+  agent?: string;
+  model?: string;
+  project_path?: string;
+  limit?: number;
+  offset?: number;
+}
+
+interface SearchThreadsInput {
+  query: string;
+  project_path?: string;
+}
+
+export type ToolInput = GetThreadInput | ListThreadsInput | SearchThreadsInput;
+
+// ---------------------------------------------------------------------------
 // Server-side tool execution
 // ---------------------------------------------------------------------------
 
 export async function executeServerTool(
   name: string,
-  input: Record<string, unknown>,
+  input: ToolInput,
   userId: string
 ): Promise<string> {
   switch (name) {
     case "get_thread": {
-      const slug = input.slug as string;
+      const { slug } = input as GetThreadInput;
       const rows = await db
         .select()
         .from(thread)
@@ -133,13 +156,14 @@ export async function executeServerTool(
     }
 
     case "list_threads": {
-      const limit = Math.min(50, Math.max(1, Number(input.limit ?? 20)));
-      const offset = Math.max(0, Number(input.offset ?? 0));
+      const listInput = input as ListThreadsInput;
+      const limit = Math.min(50, Math.max(1, Number(listInput.limit ?? 20)));
+      const offset = Math.max(0, Number(listInput.offset ?? 0));
 
       const conditions = [eq(thread.ownerId, userId)];
-      if (input.agent) conditions.push(eq(thread.agent, input.agent as string));
-      if (input.model) conditions.push(eq(thread.model, input.model as string));
-      if (input.project_path) conditions.push(eq(thread.projectPath, input.project_path as string));
+      if (listInput.agent) conditions.push(eq(thread.agent, listInput.agent));
+      if (listInput.model) conditions.push(eq(thread.model, listInput.model));
+      if (listInput.project_path) conditions.push(eq(thread.projectPath, listInput.project_path));
 
       const where = and(...conditions);
 
@@ -176,10 +200,11 @@ export async function executeServerTool(
     }
 
     case "search_threads": {
+      const searchInput = input as SearchThreadsInput;
       return searchThreadsServer(
-        input.query as string,
+        searchInput.query,
         userId,
-        input.project_path as string | undefined
+        searchInput.project_path
       );
     }
 

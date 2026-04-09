@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { decisionTrace } from "@/lib/db/schema";
-import { THREAD_TOOLS, executeServerTool } from "./tools";
+import { THREAD_TOOLS, executeServerTool, type ToolInput } from "./tools";
 
 const client = new Anthropic();
 
@@ -19,6 +19,18 @@ export type TraceMoment = {
   excerpt: string;
   annotation?: string;
 };
+
+interface EmitMomentInput {
+  threadSlug: string;
+  startOrdinal: number;
+  endOrdinal: number;
+  excerpt: string;
+}
+
+interface SearchInput {
+  query: string;
+  project_path?: string;
+}
 
 export type ActivityEntry = {
   type: "search" | "read" | "moment" | "synthesize" | "done" | "info";
@@ -57,7 +69,7 @@ async function saveProgress(
  */
 async function executeDiscoveryTool(
   name: string,
-  input: Record<string, unknown>,
+  input: ToolInput,
   userId: string
 ): Promise<string> {
   const result = await executeServerTool(name, input, userId);
@@ -190,19 +202,18 @@ async function runDiscoveryAgent(
     const toolResults: Anthropic.Messages.ToolResultBlockParam[] = [];
 
     for (const toolUse of toolUseBlocks) {
-      const input = toolUse.input as Record<string, unknown>;
-
       if (toolUse.name === "emit_moment") {
+        const input = toolUse.input as EmitMomentInput;
         const moment: TraceMoment = {
           kind: "moment",
-          threadSlug: input.threadSlug as string,
-          startOrdinal: input.startOrdinal as number,
-          endOrdinal: input.endOrdinal as number,
-          excerpt: input.excerpt as string,
+          threadSlug: input.threadSlug,
+          startOrdinal: input.startOrdinal,
+          endOrdinal: input.endOrdinal,
+          excerpt: input.excerpt,
         };
 
         // Look up thread title
-        const threadResult = await executeServerTool("get_thread", { slug: moment.threadSlug }, userId);
+        const threadResult = await executeServerTool("get_thread", { slug: input.threadSlug }, userId);
         try {
           const parsed = JSON.parse(threadResult);
           if (parsed.thread?.title) moment.threadTitle = parsed.thread.title;
@@ -220,6 +231,7 @@ async function runDiscoveryAgent(
           content: JSON.stringify({ success: true, momentIndex: moments.length - 1 }),
         });
       } else if (toolUse.name === "search_threads") {
+        const input = toolUse.input as SearchInput;
         content.activity.push(activity("search", `Searching: "${input.query}"`));
         await saveProgress(traceId, content);
 
@@ -230,6 +242,7 @@ async function runDiscoveryAgent(
           content: result,
         });
       } else if (toolUse.name === "get_thread") {
+        const input = toolUse.input as { slug: string };
         content.activity.push(activity("read", `Reading thread: ${input.slug}`));
         await saveProgress(traceId, content);
 
@@ -240,7 +253,7 @@ async function runDiscoveryAgent(
           content: result,
         });
       } else {
-        const result = await executeDiscoveryTool(toolUse.name, input, userId);
+        const result = await executeDiscoveryTool(toolUse.name, toolUse.input as ToolInput, userId);
         toolResults.push({
           type: "tool_result",
           tool_use_id: toolUse.id,

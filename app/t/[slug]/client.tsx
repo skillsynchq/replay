@@ -14,7 +14,7 @@ import { VisibilitySelector } from "@/app/components/visibility-selector";
 import { EditableTitle } from "@/app/components/editable-title";
 import { TagEditor } from "@/app/components/tag-editor";
 import { PageReveal } from "@/app/components/page-reveal";
-import { ContentBlockRenderer } from "@/app/components/content-renderer";
+import { ContentBlockRenderer, type ContentBlock, type ToolResultBlock } from "@/app/components/content-renderer";
 import { Markdown } from "@/app/components/markdown";
 import { StarButton } from "@/app/components/star-button";
 import { AssistantTrigger } from "@/app/components/assistant";
@@ -31,7 +31,7 @@ interface MessageData {
   ordinal: number;
   role: string;
   content: string;
-  contentBlocks: Record<string, unknown>[] | null;
+  contentBlocks: ContentBlock[] | null;
   model: string | null;
   stopReason: string | null;
   usage: { input_tokens: number; output_tokens: number } | null;
@@ -248,16 +248,12 @@ function hasVisibleContent(msg: MessageData): boolean {
   return msg.content.trim().length > 0;
 }
 
-function firstRenderableBlock(msg: MessageData): Record<string, unknown> | null {
+function firstRenderableBlock(msg: MessageData): ContentBlock | null {
   if (!msg.contentBlocks) return null;
 
   for (const block of msg.contentBlocks) {
     if (block.type === "tool_result") continue;
-    if (
-      block.type === "text" &&
-      typeof (block as { text?: string }).text === "string" &&
-      !(block as { text: string }).text.trim()
-    ) {
+    if (block.type === "text" && !block.text.trim()) {
       continue;
     }
     return block;
@@ -381,7 +377,7 @@ function renderMessage(
     <AssistantMessage key={msg.id}>
       {msg.contentBlocks ? (
         <ContentBlockRenderer
-          blocks={msg.contentBlocks as never[]}
+          blocks={msg.contentBlocks}
           toolResults={toolResults}
           highlightMode={highlightMode}
         />
@@ -412,26 +408,21 @@ export function ThreadViewerClient({
     for (const msg of messages) {
       if (msg.contentBlocks) {
         for (const block of msg.contentBlocks) {
-          if (
-            block.type === "tool_result" &&
-            typeof (block as Record<string, unknown>).tool_use_id === "string"
-          ) {
-            const raw = (block as Record<string, unknown>).content;
+          if (block.type === "tool_result") {
+            const toolResult = block as ToolResultBlock;
+            const raw = toolResult.content;
             let text: string;
             if (typeof raw === "string") {
               text = raw;
             } else if (Array.isArray(raw)) {
-              text = (raw as Array<Record<string, unknown>>)
+              text = raw
                 .filter((item) => item.type === "text" && typeof item.text === "string")
-                .map((item) => item.text as string)
+                .map((item) => item.text!)
                 .join("\n");
             } else {
               continue;
             }
-            results.set(
-              (block as { tool_use_id: string }).tool_use_id,
-              text
-            );
+            results.set(toolResult.tool_use_id, text);
           }
         }
       }

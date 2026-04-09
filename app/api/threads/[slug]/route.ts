@@ -58,13 +58,15 @@ export async function GET(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params;
-  const threadRow = await findThread(slug);
+  const [threadRow, session] = await Promise.all([
+    findThread(slug),
+    getOptionalSession(request),
+  ]);
 
   if (!threadRow) {
     return NextResponse.json({ error: "Thread not found" }, { status: 404 });
   }
 
-  const session = await getOptionalSession(request);
   const userId = session?.user.id ?? null;
 
   if (!(await canView(threadRow, userId))) {
@@ -151,14 +153,16 @@ export async function PATCH(
   await db.update(thread).set(updates).where(eq(thread.id, threadRow.id));
 
   if (redactions && redactions.length > 0) {
-    for (const r of redactions) {
-      await db
-        .update(message)
-        .set({ redacted: r.redacted })
-        .where(
-          and(eq(message.id, r.message_id), eq(message.threadId, threadRow.id))
-        );
-    }
+    await Promise.all(
+      redactions.map((r) =>
+        db
+          .update(message)
+          .set({ redacted: r.redacted })
+          .where(
+            and(eq(message.id, r.message_id), eq(message.threadId, threadRow.id))
+          )
+      )
+    );
 
     // Recompute snapshot since redaction affects it
     const msgs = await db

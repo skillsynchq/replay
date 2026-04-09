@@ -13,36 +13,36 @@ import { Markdown } from "./markdown";
 
 // --- Types ---
 
-interface TextBlock {
+export interface TextBlock {
   type: "text";
   text: string;
 }
 
-interface ThinkingBlock {
+export interface ThinkingBlock {
   type: "thinking";
   thinking: string;
 }
 
-interface ToolUseBlock {
+export interface ToolUseBlock {
   type: "tool_use";
   id: string;
   name: string;
   input: Record<string, unknown>;
 }
 
-interface ToolResultBlock {
+export interface ToolResultBlock {
   type: "tool_result";
   tool_use_id: string;
   content: string | Array<{ type: string; text?: string; source?: { type: string; media_type: string; data: string } }>;
   is_error?: boolean;
 }
 
-interface ImageBlock {
+export interface ImageBlock {
   type: "image";
   source: { type: string; media_type: string; data: string };
 }
 
-type ContentBlock = TextBlock | ThinkingBlock | ToolUseBlock | ToolResultBlock | ImageBlock;
+export type ContentBlock = TextBlock | ThinkingBlock | ToolUseBlock | ToolResultBlock | ImageBlock;
 type HighlightMode = "text" | "block" | "none";
 
 function cx(...classes: Array<string | false | null | undefined>) {
@@ -409,12 +409,12 @@ function EditToolView({
   input,
   highlighted,
 }: {
-  input: Record<string, unknown>;
+  input: ToolUseBlock["input"];
   highlighted: boolean;
 }) {
-  const filePath = shortPath(input.file_path as string);
-  const oldString = input.old_string as string;
-  const newString = input.new_string as string;
+  const filePath = shortPath(String(input.file_path ?? ""));
+  const oldString = String(input.old_string ?? "");
+  const newString = String(input.new_string ?? "");
 
   return (
     <div
