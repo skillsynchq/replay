@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ThreadCard } from "@/app/components/thread-card";
-import { PageReveal } from "@/app/components/page-reveal";
 import { CopyButton } from "@/app/components/copy-button";
 import { SearchResults } from "@/app/components/search-results";
 import { AssistantSearchTrigger } from "@/app/components/assistant";
@@ -185,17 +184,16 @@ export function DashboardClient({
 
   return (
     <div className="mx-auto max-w-3xl">
-      <PageReveal>
+      <div>
         <h1 className="text-balance text-[21px] font-medium text-fg">
           Your threads
         </h1>
         <p className="mt-1 text-[13px] text-fg-muted">
           Manage your uploaded agent sessions.
         </p>
-      </PageReveal>
+      </div>
 
       {hasThreads ? (
-        <PageReveal delay={40}>
           <div className="mt-6 flex items-center gap-2">
             <div className="relative flex-1">
               <label className="sr-only" htmlFor="dashboard-search">
@@ -222,7 +220,6 @@ export function DashboardClient({
             </div>
             <AssistantSearchTrigger />
           </div>
-        </PageReveal>
       ) : null}
 
         <div className="mt-6">

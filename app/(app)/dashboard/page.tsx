@@ -52,7 +52,7 @@ export default async function DashboardPage({
       })
       .from(thread)
       .where(where)
-      .orderBy(desc(thread.createdAt))
+      .orderBy(desc(thread.sessionTs))
       .limit(limit)
       .offset(offset),
     db
