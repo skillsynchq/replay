@@ -5,7 +5,7 @@ import { eq, and, desc, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { thread, threadStar } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
-import { getOrBackfillSnapshot } from "@/lib/thread-snapshot";
+import { getOrBackfillSnapshots } from "@/lib/thread-snapshot";
 import { Nav } from "@/app/components/nav";
 import { Assistant } from "@/app/components/assistant";
 import { PageReveal } from "@/app/components/page-reveal";
@@ -83,6 +83,14 @@ export default async function ProfilePage({
     }
   } catch {}
 
+  const snapshots = await getOrBackfillSnapshots(threads);
+  const profileThreads = threads.map((t) => ({
+    ...t,
+    sessionTs: t.sessionTs.toISOString(),
+    starred: starredSlugs.has(t.slug),
+    conversationSnapshot: snapshots.get(t.id) ?? [{ kind: "assistant" as const, weight: 1 }],
+  }));
+
   return (
     <div className="flex min-h-dvh flex-col">
       <Nav />
@@ -122,17 +130,7 @@ export default async function ProfilePage({
               </p>
 
               <ProfileThreads
-                threads={await Promise.all(
-                  threads.map(async (t) => ({
-                    ...t,
-                    sessionTs: t.sessionTs.toISOString(),
-                    starred: starredSlugs.has(t.slug),
-                    conversationSnapshot: await getOrBackfillSnapshot(
-                      t.id,
-                      t.conversationSnapshot
-                    ),
-                  }))
-                )}
+                threads={profileThreads}
                 profileName={user.name}
                 isAuthenticated={isAuthenticated}
               />

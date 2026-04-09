@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth";
 import { getGlobalConfig, type ProjectGroupsConfig } from "@/lib/config";
 import { db } from "@/lib/db";
 import { thread } from "@/lib/db/schema";
-import { getOrBackfillSnapshot } from "@/lib/thread-snapshot";
+import { getOrBackfillSnapshots } from "@/lib/thread-snapshot";
 import { DashboardClient } from "./dashboard-client";
 
 function firstParam(value: string | string[] | undefined, fallback = "") {
@@ -61,17 +61,13 @@ export default async function DashboardPage({
       .where(where),
   ]);
 
-  const threadsWithSnapshots = await Promise.all(
-    threads.map(async (item) => ({
-      ...item,
-      sessionTs: item.sessionTs.toISOString(),
-      createdAt: item.createdAt.toISOString(),
-      conversationSnapshot: await getOrBackfillSnapshot(
-        item.id,
-        item.conversationSnapshot
-      ),
-    }))
-  );
+  const snapshots = await getOrBackfillSnapshots(threads);
+  const threadsWithSnapshots = threads.map((item) => ({
+    ...item,
+    sessionTs: item.sessionTs.toISOString(),
+    createdAt: item.createdAt.toISOString(),
+    conversationSnapshot: snapshots.get(item.id) ?? [{ kind: "assistant" as const, weight: 1 }],
+  }));
 
   return (
     <DashboardClient

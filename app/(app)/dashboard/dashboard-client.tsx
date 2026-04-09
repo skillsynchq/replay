@@ -225,7 +225,6 @@ export function DashboardClient({
         </PageReveal>
       ) : null}
 
-      <PageReveal delay={80}>
         <div className="mt-6">
           {isSearching ? (
             <SearchResults results={results} query={query} />
@@ -319,7 +318,6 @@ export function DashboardClient({
             </>
           )}
         </div>
-      </PageReveal>
     </div>
   );
 }

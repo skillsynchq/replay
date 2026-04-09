@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { message, thread } from "@/lib/db/schema";
 
@@ -226,35 +226,60 @@ export function buildConversationSnapshot(
 }
 
 /**
- * Returns the stored snapshot if present, otherwise computes it from
- * messages, persists it back to the thread row, and returns it.
+ * For a list of threads, returns snapshots — using stored values when present,
+ * and batch-backfilling any that are missing in a single query.
  */
-export async function getOrBackfillSnapshot(
-  threadId: string,
-  stored: unknown
-): Promise<ConversationSnapshot> {
-  if (Array.isArray(stored) && stored.length > 0) {
-    return stored as ConversationSnapshot;
+export async function getOrBackfillSnapshots(
+  threads: { id: string; conversationSnapshot: unknown }[]
+): Promise<Map<string, ConversationSnapshot>> {
+  const result = new Map<string, ConversationSnapshot>();
+  const missing: string[] = [];
+
+  for (const t of threads) {
+    if (Array.isArray(t.conversationSnapshot) && t.conversationSnapshot.length > 0) {
+      result.set(t.id, t.conversationSnapshot as ConversationSnapshot);
+    } else {
+      missing.push(t.id);
+    }
   }
 
+  if (missing.length === 0) return result;
+
+  // One query for all missing threads' messages
   const msgs = await db
     .select({
+      threadId: message.threadId,
       role: message.role,
       content: message.content,
       contentBlocks: message.contentBlocks,
       redacted: message.redacted,
     })
     .from(message)
-    .where(eq(message.threadId, threadId))
-    .orderBy(asc(message.ordinal));
+    .where(inArray(message.threadId, missing))
+    .orderBy(asc(message.threadId), asc(message.ordinal));
 
-  const snapshot = buildConversationSnapshot(msgs);
+  // Group by thread
+  const byThread = new Map<string, typeof msgs>();
+  for (const m of msgs) {
+    let arr = byThread.get(m.threadId);
+    if (!arr) {
+      arr = [];
+      byThread.set(m.threadId, arr);
+    }
+    arr.push(m);
+  }
 
-  // Persist so we don't recompute next time
-  await db
-    .update(thread)
-    .set({ conversationSnapshot: snapshot })
-    .where(eq(thread.id, threadId));
+  // Compute and persist snapshots
+  await Promise.all(
+    missing.map(async (threadId) => {
+      const snapshot = buildConversationSnapshot(byThread.get(threadId) ?? []);
+      result.set(threadId, snapshot);
+      await db
+        .update(thread)
+        .set({ conversationSnapshot: snapshot })
+        .where(eq(thread.id, threadId));
+    })
+  );
 
-  return snapshot;
+  return result;
 }

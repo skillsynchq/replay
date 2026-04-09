@@ -39,12 +39,10 @@ export function useThreadSearch(query: string): UseThreadSearch {
 
     (async () => {
       try {
-        // Load from IndexedDB first — searches work immediately against cached data
         await init();
         setTotalIndexed(indexedCount());
         setReady(true);
 
-        // Then sync with server in background
         setSyncing(true);
         await sync();
         setTotalIndexed(indexedCount());
