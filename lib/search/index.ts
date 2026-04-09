@@ -64,6 +64,10 @@ const flexIndex = new FlexIndex({
   tokenize: "forward",
   cache: 100,
 });
+const INDEX_BATCH_SIZE = 250;
+
+let initialized = false;
+let initPromise: Promise<number> | null = null;
 
 function getNumKey(compositeKey: string): number {
   let key = msgKeyToNum.get(compositeKey);
@@ -84,19 +88,64 @@ function indexMessage(msg: StoredMessage) {
   keyToMessage.set(numKey, msg);
 }
 
+async function yieldToMainThread() {
+  await new Promise<void>((resolve) => {
+    if (typeof window !== "undefined" && "requestAnimationFrame" in window) {
+      window.requestAnimationFrame(() => resolve());
+      return;
+    }
+
+    setTimeout(resolve, 0);
+  });
+}
+
+async function indexMessagesInBatches(messages: StoredMessage[]) {
+  for (let index = 0; index < messages.length; index += INDEX_BATCH_SIZE) {
+    const batch = messages.slice(index, index + INDEX_BATCH_SIZE);
+
+    for (const message of batch) {
+      indexMessage(message);
+    }
+
+    if (index + INDEX_BATCH_SIZE < messages.length) {
+      await yieldToMainThread();
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
 /** Initialize: load from IndexedDB and rebuild the in-memory index */
 export async function init(): Promise<number> {
-  const [threads, messages] = await Promise.all([
-    getAllThreads(),
-    getAllMessages(),
-  ]);
-  for (const t of threads) threadMap.set(t.id, t);
-  for (const m of messages) indexMessage(m);
-  return threads.length;
+  if (initialized) {
+    return threadMap.size;
+  }
+
+  if (initPromise) {
+    return initPromise;
+  }
+
+  initPromise = (async () => {
+    const [threads, messages] = await Promise.all([
+      getAllThreads(),
+      getAllMessages(),
+    ]);
+
+    for (const currentThread of threads) {
+      threadMap.set(currentThread.id, currentThread);
+    }
+
+    await indexMessagesInBatches(messages);
+    initialized = true;
+    return threadMap.size;
+  })().catch((error) => {
+    initPromise = null;
+    throw error;
+  });
+
+  return initPromise;
 }
 
 /** Sync with the server. Returns the number of new/updated threads. */
@@ -141,10 +190,10 @@ export async function sync(): Promise<number> {
           content: m.content,
         };
         storedMessages.push(stored);
-        indexMessage(stored);
       }
     }
 
+    await indexMessagesInBatches(storedMessages);
     await putThreadsAndMessages(storedThreads, storedMessages);
   }
 

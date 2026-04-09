@@ -290,7 +290,6 @@ export function Assistant() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
-  const [, setSearchReady] = useState(false);
   const [threadContext, setThreadContext] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -298,16 +297,35 @@ export function Assistant() {
   const overlayRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const lastActiveRef = useRef<HTMLElement | null>(null);
+  const searchReadyRef = useRef(false);
+  const searchInitRef = useRef<Promise<void> | null>(null);
+
+  const ensureSearchReady = useCallback(async () => {
+    if (searchReadyRef.current) return;
+
+    if (!searchInitRef.current) {
+      searchInitRef.current = initSearch()
+        .then(() => {
+          searchReadyRef.current = true;
+        })
+        .catch((error) => {
+          searchInitRef.current = null;
+          throw error;
+        });
+    }
+
+    await searchInitRef.current;
+  }, []);
 
   useEffect(() => {
     setMessages(loadMessages());
   }, []);
 
   useEffect(() => {
-    initSearch()
-      .then(() => setSearchReady(true))
-      .catch(() => {});
-  }, []);
+    if (!open) return;
+
+    void ensureSearchReady().catch(() => {});
+  }, [ensureSearchReady, open]);
 
   useEffect(() => {
     function handleOpen(e: Event) {
@@ -532,6 +550,8 @@ export function Assistant() {
     const segmentsRef = { current: [] as MessageSegment[] };
 
     try {
+      await ensureSearchReady();
+
       let continuation: {
         assistantContent: unknown[];
         toolResults: { tool_use_id: string; content: string }[];
