@@ -27,7 +27,7 @@ const defaults: Record<string, unknown> = {
     defaultCollapsed: false
   } as ProjectGroupsConfig,
   decision_traces: {
-    enabled: false,
+    enabled: true,
   } as DecisionTracesConfig,
 };
 
