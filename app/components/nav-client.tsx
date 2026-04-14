@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRef, useState, useEffect, useId } from "react";
 import { useRouter } from "next/navigation";
-import { XIcon, FastForwardIcon } from "./icons";
+import { XIcon, FastForwardIcon, GitHubMark } from "./icons";
 import { authClient } from "@/lib/auth-client";
 
 interface NavClientProps {
@@ -119,6 +119,15 @@ export function NavClient({ user, minimal, tracesEnabled }: NavClientProps) {
         </div>
 
         {!minimal && <div className="hidden min-[900px]:flex items-center gap-6">
+          <a
+            href="https://github.com/skillsynchq/replay"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="GitHub repository"
+            className="flex items-center text-fg-muted transition-colors duration-150 hover:text-fg"
+          >
+            <GitHubMark className="size-4" />
+          </a>
           <Link
             href="/docs"
             className="text-fg-muted text-[13px] transition-colors duration-150 hover:text-fg"
@@ -279,6 +288,19 @@ export function NavClient({ user, minimal, tracesEnabled }: NavClientProps) {
                 >
                   Docs
                 </Link>
+
+                <a
+                  href="https://github.com/skillsynchq/replay"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  role="menuitem"
+                  data-mobile-nav-item="true"
+                  onClick={() => setMobileNavOpen(false)}
+                  className="flex items-center gap-2 rounded-[6px] px-3 py-2 text-[13px] text-fg-muted transition-colors duration-150 hover:bg-surface hover:text-fg focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-inset"
+                >
+                  <GitHubMark className="size-3.5" />
+                  GitHub
+                </a>
 
                 {user ? (
                   <>
