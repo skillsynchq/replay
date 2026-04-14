@@ -40,7 +40,16 @@ export default async function TraceDetailPage({
   const content = trace.content as TraceContent | null;
 
   if (trace.status === "complete" && content) {
-    return <TraceView question={trace.question} title={trace.title} content={content} />;
+    return (
+      <TraceView
+        question={trace.question}
+        title={trace.title}
+        content={content}
+        slug={trace.slug}
+        status="complete"
+        isOwner
+      />
+    );
   }
 
   return (

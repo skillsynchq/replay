@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import Link from "next/link";
+import posthog from "posthog-js";
 import { AgentMark, ChevronDown, XIcon } from "@/app/components/icons";
 import { VisibilitySelector } from "@/app/components/visibility-selector";
 import { EditableTitle } from "@/app/components/editable-title";
@@ -406,6 +407,14 @@ export function ThreadViewerClient({
   starred,
   isAuthenticated,
 }: ThreadViewerProps) {
+  useEffect(() => {
+    posthog.capture("thread_viewed", {
+      thread_slug: thread.slug,
+      is_owner: isOwner,
+      visibility: thread.visibility,
+    });
+  }, [thread.slug, thread.visibility, isOwner]);
+
   // Build tool_use_id → tool_result content map across all messages
   const toolResults = useMemo(() => {
     const results = new Map<string, string>();

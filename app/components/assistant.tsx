@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import posthog from "posthog-js";
 import { Streamdown, type Components } from "streamdown";
 import "streamdown/styles.css";
 import {
@@ -633,6 +634,9 @@ export function Assistant() {
   };
 
   const handleNewChat = () => {
+    posthog.capture("assistant_new_chat", {
+      has_active_thread: !!threadContext,
+    });
     if (streaming && abortRef.current) {
       abortRef.current.abort();
     }

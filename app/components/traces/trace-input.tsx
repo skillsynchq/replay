@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import posthog from "posthog-js";
 
 interface TraceInputProps {
   projectPaths: string[];
@@ -159,11 +160,14 @@ export function TraceInput({ projectPaths }: TraceInputProps) {
 
       {/* Example questions */}
       <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-        {EXAMPLE_QUESTIONS.map((q) => (
+        {EXAMPLE_QUESTIONS.map((q, idx) => (
           <button
             key={q}
             type="button"
-            onClick={() => handleExampleClick(q)}
+            onClick={() => {
+              posthog.capture("trace_example_clicked", { example_index: idx });
+              handleExampleClick(q);
+            }}
             className="rounded-[4px] border border-border px-3 py-1.5 text-[12px] text-fg-ghost transition-colors duration-150 hover:border-border-hover hover:text-fg-muted cursor-pointer"
           >
             {q}

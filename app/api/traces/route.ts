@@ -6,6 +6,7 @@ import { decisionTrace } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth-helpers";
 import { getGlobalConfig, type DecisionTracesConfig } from "@/lib/config";
 import { generateTrace } from "@/lib/ai/generate-trace";
+import { getPostHogClient } from "@/lib/posthog-server";
 
 export async function GET(request: Request) {
   const cfg = await getGlobalConfig<DecisionTracesConfig>("decision_traces");
@@ -76,9 +77,19 @@ export async function POST(request: Request) {
     })
     .returning({ id: decisionTrace.id, slug: decisionTrace.slug });
 
+  getPostHogClient().capture({
+    distinctId: userId,
+    event: "trace_created",
+    properties: {
+      trace_slug: inserted.slug,
+      question: question.trim(),
+      has_project_scope: !!projectPath,
+    },
+  });
+
   // Fire-and-forget background generation
   after(async () => {
-    await generateTrace(inserted.id, userId, question.trim(), projectPath);
+    await generateTrace(inserted.id, inserted.slug, userId, question.trim(), projectPath);
   });
 
   return NextResponse.json(

@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { decisionTrace } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth-helpers";
 import { getGlobalConfig, type DecisionTracesConfig } from "@/lib/config";
+import { getPostHogClient } from "@/lib/posthog-server";
 
 type RouteContext = { params: Promise<{ slug: string }> };
 
@@ -61,14 +62,26 @@ export async function DELETE(
 
   const { slug } = await params;
 
-  await db
+  const deleted = await db
     .delete(decisionTrace)
     .where(
       and(
         eq(decisionTrace.slug, slug),
         eq(decisionTrace.ownerId, session.user.id)
       )
-    );
+    )
+    .returning({ status: decisionTrace.status });
+
+  if (deleted[0]) {
+    getPostHogClient().capture({
+      distinctId: session.user.id,
+      event: "trace_deleted",
+      properties: {
+        trace_slug: slug,
+        status_at_delete: deleted[0].status,
+      },
+    });
+  }
 
   return new Response(null, { status: 204 });
 }

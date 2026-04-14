@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import posthog from "posthog-js";
 import type { TraceContent, TraceMoment } from "@/lib/ai/generate-trace";
 import { Markdown } from "@/app/components/markdown";
 
@@ -9,6 +10,9 @@ interface TraceViewProps {
   question: string;
   title?: string | null;
   content: TraceContent;
+  slug?: string;
+  status?: string;
+  isOwner?: boolean;
 }
 
 function deriveLabel(moment: TraceMoment): string {
@@ -174,9 +178,18 @@ function buildFlow(moments: TraceMoment[]): FlowItem[] {
   return items;
 }
 
-export function TraceView({ question, title, content }: TraceViewProps) {
+export function TraceView({ question, title, content, slug, status, isOwner }: TraceViewProps) {
   const items = buildFlow(content.moments);
   const [openSet, setOpenSet] = useState<Set<number>>(() => new Set());
+
+  useEffect(() => {
+    if (!slug) return;
+    posthog.capture("trace_viewed", {
+      trace_slug: slug,
+      status: status ?? "complete",
+      is_owner: isOwner ?? true,
+    });
+  }, [slug, status, isOwner]);
 
   function toggle(i: number) {
     setOpenSet((prev) => {

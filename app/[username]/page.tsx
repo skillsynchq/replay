@@ -59,11 +59,13 @@ export default async function ProfilePage({
 
   // Check if visitor is authenticated (for AI button + stars)
   let isAuthenticated = false;
+  let isSelf = false;
   let starredSlugs = new Set<string>();
   try {
     const headersList = await headers();
     const session = await auth.api.getSession({ headers: headersList });
     isAuthenticated = !!session;
+    isSelf = session?.user.id === user.id;
 
     if (session && threads.length > 0) {
       const threadIds = threads.map((t) => t.id);
@@ -132,7 +134,9 @@ export default async function ProfilePage({
               <ProfileThreads
                 threads={profileThreads}
                 profileName={user.name}
+                profileUsername={user.username}
                 isAuthenticated={isAuthenticated}
+                isSelf={isSelf}
               />
             </div>
           </PageReveal>

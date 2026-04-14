@@ -7,7 +7,9 @@ import {
   useRef,
   useCallback,
   useMemo,
+  useEffect,
 } from "react";
+import posthog from "posthog-js";
 import { Index as FlexIndex } from "flexsearch";
 import { ThreadCard } from "@/app/components/thread-card";
 import { SearchResults } from "@/app/components/search-results";
@@ -33,14 +35,24 @@ interface ThreadItem {
 interface ProfileThreadsProps {
   threads: ThreadItem[];
   profileName: string;
+  profileUsername: string;
   isAuthenticated: boolean;
+  isSelf: boolean;
 }
 
 export function ProfileThreads({
   threads,
   profileName,
+  profileUsername,
   isAuthenticated,
+  isSelf,
 }: ProfileThreadsProps) {
+  useEffect(() => {
+    posthog.capture("profile_viewed", {
+      profile_username: profileUsername,
+      is_self: isSelf,
+    });
+  }, [profileUsername, isSelf]);
   const [query, setQuery] = useState("");
   const [index, setIndex] = useState<FlexIndex | null>(null);
   const [indexReady, setIndexReady] = useState(false);

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
+import posthog from "posthog-js";
 import type { TraceContent, ActivityEntry } from "@/lib/ai/generate-trace";
 import { TraceView } from "./trace-view";
 
@@ -188,6 +189,14 @@ export function TraceGenerating({
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [poll]);
+
+  useEffect(() => {
+    posthog.capture("trace_viewed", {
+      trace_slug: slug,
+      status: "generating",
+      is_owner: true,
+    });
+  }, [slug]);
 
   const displayTitle = title || question;
   const activityLog = content?.activity ?? [];

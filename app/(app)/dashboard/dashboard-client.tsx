@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import posthog from "posthog-js";
 import { ThreadCard } from "@/app/components/thread-card";
 import { CopyButton } from "@/app/components/copy-button";
 import { SearchResults } from "@/app/components/search-results";
@@ -144,6 +145,10 @@ export function DashboardClient({
 }) {
   const [query, setQuery] = useState(initialQuery);
   const [deletedSlugs, setDeletedSlugs] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    posthog.capture("dashboard_viewed");
+  }, []);
   const { results, syncing, isSearching } = useThreadSearch(query);
 
   const handleDelete = useCallback(async (slug: string) => {

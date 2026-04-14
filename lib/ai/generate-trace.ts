@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { decisionTrace } from "@/lib/db/schema";
 import { THREAD_TOOLS, executeServerTool } from "./tools";
+import { getPostHogClient } from "@/lib/posthog-server";
 
 const client = new Anthropic();
 
@@ -357,11 +358,17 @@ async function runSynthesisAgent(
 
 export async function generateTrace(
   traceId: string,
+  traceSlug: string,
   userId: string,
   question: string,
   projectPath?: string | null
 ): Promise<void> {
   const content: TraceContent = { moments: [], resolution: null, activity: [] };
+  const posthog = getPostHogClient();
+  const startedAt = Date.now();
+  let discoveryMs = 0;
+  let synthesisMs = 0;
+  let phase: "discovery" | "synthesis" = "discovery";
 
   try {
     // Generate title
@@ -389,7 +396,9 @@ export async function generateTrace(
     await saveProgress(traceId, content);
 
     // Phase 1: Discovery
+    const discoveryStart = Date.now();
     const rawMoments = await runDiscoveryAgent(traceId, userId, question, content, projectPath);
+    discoveryMs = Date.now() - discoveryStart;
 
     if (rawMoments.length === 0) {
       content.activity.push(activity("done", "No relevant conversations found"));
@@ -405,11 +414,26 @@ export async function generateTrace(
           updatedAt: new Date(),
         })
         .where(eq(decisionTrace.id, traceId));
+      posthog.capture({
+        distinctId: userId,
+        event: "trace_generation_completed",
+        properties: {
+          trace_slug: traceSlug,
+          moment_count: 0,
+          has_resolution: false,
+          duration_ms: Date.now() - startedAt,
+          discovery_ms: discoveryMs,
+          synthesis_ms: 0,
+        },
+      });
       return;
     }
 
     // Phase 2: Synthesis
+    phase = "synthesis";
+    const synthesisStart = Date.now();
     const finalContent = await runSynthesisAgent(traceId, question, rawMoments, content);
+    synthesisMs = Date.now() - synthesisStart;
 
     await db
       .update(decisionTrace)
@@ -419,6 +443,19 @@ export async function generateTrace(
         updatedAt: new Date(),
       })
       .where(eq(decisionTrace.id, traceId));
+
+    posthog.capture({
+      distinctId: userId,
+      event: "trace_generation_completed",
+      properties: {
+        trace_slug: traceSlug,
+        moment_count: finalContent.moments.filter((m) => m.kind === "moment").length,
+        has_resolution: !!finalContent.resolution,
+        duration_ms: Date.now() - startedAt,
+        discovery_ms: discoveryMs,
+        synthesis_ms: synthesisMs,
+      },
+    });
   } catch (err) {
     console.error("Trace generation failed:", err);
     content.activity.push(activity("info", "Generation encountered an error"));
@@ -430,5 +467,15 @@ export async function generateTrace(
         updatedAt: new Date(),
       })
       .where(eq(decisionTrace.id, traceId));
+
+    posthog.capture({
+      distinctId: userId,
+      event: "trace_generation_failed",
+      properties: {
+        trace_slug: traceSlug,
+        phase,
+        error_kind: err instanceof Error ? err.constructor.name : "unknown",
+      },
+    });
   }
 }
