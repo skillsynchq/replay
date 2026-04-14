@@ -74,7 +74,7 @@ Migrations output to `lib/db/migrations/`. Config in `drizzle.config.ts` (reads 
 
 ### CLI Data Ingestion
 
-The CLI sends JSONL session data. See `CLI_DATA_SPEC.md` for the full spec of what's available — messages include structured content blocks (text, thinking, tool_use, tool_result, images) beyond the flattened text.
+The CLI sends JSONL session data. Messages include structured content blocks (text, thinking, tool_use, tool_result, images) beyond the flattened text.
 
 ## Design System
 
