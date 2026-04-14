@@ -57,7 +57,7 @@ export function ConversationPreview() {
                 Refactor auth middleware for session validation
               </h3>
               <p className="mt-1 text-[13px] text-fg-muted">
-                nishant · <span className="text-fg-ghost">@nishantjoshi</span>
+                Nishant Joshi · <span className="text-fg-ghost">@nishantjosh</span>
               </p>
 
               <Conversation.MetaGrid>
