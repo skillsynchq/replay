@@ -1,6 +1,16 @@
-# replay
+# Replay
+
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](./LICENSE)
+[![Website](https://img.shields.io/badge/web-replay.md-stone)](https://replay.md)
+[![Docs](https://img.shields.io/badge/docs-replay.md%2Fdocs-stone)](https://replay.md/docs)
 
 Share your AI coding sessions. Upload a conversation from Claude Code or Codex, get a permanent link. That's it.
+
+Your session becomes a browsable thread with inline diffs, tool calls, and the full back-and-forth — not a raw log dump, but something you'd actually want to read. Keep it private, share it with your team, or make it public.
+
+This repo is the web app at [replay.md](https://replay.md). Uploads come from the companion CLI, [`skillsynchq/replay-cli`](https://github.com/skillsynchq/replay-cli).
+
+## Install the CLI
 
 ```bash
 curl -sSL https://install.replay.md | sh
@@ -8,7 +18,7 @@ replay login
 replay upload <session-id-or-title>
 ```
 
-Your session becomes a browsable thread with inline diffs, tool calls, and the full back-and-forth — not a raw log dump, but something you'd actually want to read. Keep it private, share it with your team, or make it public.
+Full CLI docs live in the [replay-cli README](https://github.com/skillsynchq/replay-cli).
 
 ## Features
 
@@ -25,36 +35,33 @@ Your session becomes a browsable thread with inline diffs, tool calls, and the f
 - **Decision traces** — keep a searchable record of decisions made in the conversation where they actually happened
 - **Portfolios** — showcase your domain expertise and how you think, not just what you ship
 - **Code review** — link the conversation alongside a PR so reviewers see what was considered, not just what landed
-- **Create Skills** — convert a session where you nailed a workflow into a reusable skill
+- **Create skills** — convert a session where you nailed a workflow into a reusable skill
 
+## Related projects
 
-## Getting started
+- [**replay-cli**](https://github.com/skillsynchq/replay-cli) — Rust CLI and TUI for browsing local agent sessions and uploading them here.
+
+## Development
+
+Running the web app locally:
 
 ```bash
 bun install
-cp .env.example .env.local
-bun drizzle-kit push
+cp .env.example .env.local   # fill in the values
+bun drizzle-kit push         # apply schema to your Neon DB
 bun dev
 ```
 
 Open [localhost:3000](http://localhost:3000).
 
-## Project structure
+Tech: Next.js 16 / React 19, Tailwind CSS 4, Drizzle ORM on Neon, Better Auth (GitHub + Google), Anthropic SDK for the assistant sidebar, FlexSearch for client-side thread search. Deployed on Vercel with the Bun runtime.
 
-```
-app/
-  (app)/          # Authenticated app shell
-  [username]/     # Public profile / thread pages
-  api/            # Route handlers
-  components/     # Shared UI components
-  login/          # Auth pages
-  t/              # Thread routes
-  docs/           # Documentation pages
-lib/
-  ai/             # AI assistant logic
-  auth.ts         # Better Auth config
-  db/             # Drizzle schema, queries, migrations
-  search/         # FlexSearch indexing
-content/
-  docs/           # Documentation content (MDX)
-```
+Always use `bun`, not `npm`.
+
+## Contributing
+
+Issues and pull requests are welcome. For anything non-trivial, open an issue first so we can talk through the direction.
+
+## License
+
+[Apache 2.0](./LICENSE)
