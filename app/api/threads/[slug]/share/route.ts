@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { thread, threadShare } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth-helpers";
 import { shareThreadSchema } from "@/lib/validations";
+import { getPostHogClient } from "@/lib/posthog-server";
 
 /**
  * GET /api/threads/[slug]/share — List users this thread is shared with (owner only)
@@ -126,6 +127,15 @@ export async function POST(
       .set({ visibility: "shared", updatedAt: new Date() })
       .where(eq(thread.id, threadRow.id));
   }
+
+  const posthog = getPostHogClient();
+  posthog.capture({
+    distinctId: session.user.id,
+    event: "thread_shared",
+    properties: {
+      thread_slug: slug,
+    },
+  });
 
   return NextResponse.json(
     {

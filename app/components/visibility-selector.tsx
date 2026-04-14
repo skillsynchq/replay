@@ -5,6 +5,7 @@ import { VisibilityBadge } from "@/app/components/visibility-badge";
 import { ChevronDown, ChevronRight } from "@/app/components/icons";
 import { SharedUsers } from "@/app/components/shared-users";
 import { patchThread } from "@/lib/thread-mutations";
+import posthog from "posthog-js";
 
 const options = [
   { value: "private", label: "Private", desc: "Only you" },
@@ -76,7 +77,15 @@ export function VisibilitySelector({
     setLocalVisibility(value);
     setExpanded(false);
     const result = await patchThread(slug, { visibility: value });
-    if (!result.ok) setLocalVisibility(prev);
+    if (!result.ok) {
+      setLocalVisibility(prev);
+    } else {
+      posthog.capture("thread_visibility_changed", {
+        thread_slug: slug,
+        from_visibility: prev,
+        to_visibility: value,
+      });
+    }
   }
 
   return (

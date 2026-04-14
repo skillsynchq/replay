@@ -1,8 +1,10 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { Anthropic as PhAnthropic } from "@posthog/ai";
 import { requireAuth } from "@/lib/auth-helpers";
 import { THREAD_TOOLS, executeServerTool } from "@/lib/ai/tools";
+import { getPostHogClient } from "@/lib/posthog-server";
 
-const client = new Anthropic();
+const client = new PhAnthropic({ posthog: getPostHogClient() });
 
 const TOOLS = THREAD_TOOLS;
 
@@ -56,6 +58,17 @@ export async function POST(request: Request) {
     });
   }
 
+  if (!continuation) {
+    const posthog = getPostHogClient();
+    posthog.capture({
+      distinctId: session.user.id,
+      event: "assistant_queried",
+      properties: {
+        has_active_thread: !!activeThread,
+      },
+    });
+  }
+
   // Build the conversation messages for the API
   const apiMessages: Anthropic.Messages.MessageParam[] = inputMessages.map(
     (m) => ({ role: m.role, content: m.content })
@@ -105,11 +118,12 @@ export async function POST(request: Request) {
 
   const systemPrompt = systemParts.join("\n");
   const userId = session.user.id;
+  const traceId = crypto.randomUUID();
 
   const readable = new ReadableStream({
     async start(controller) {
       try {
-        await runAgentLoop(controller, systemPrompt, apiMessages, userId);
+        await runAgentLoop(controller, systemPrompt, apiMessages, userId, traceId);
         controller.enqueue(encodeSSE("[DONE]"));
         controller.close();
       } catch (err) {
@@ -142,6 +156,7 @@ async function runAgentLoop(
   systemPrompt: string,
   messages: Anthropic.Messages.MessageParam[],
   userId: string,
+  traceId: string,
   maxIterations = 10
 ): Promise<void> {
   for (let i = 0; i < maxIterations; i++) {
@@ -151,6 +166,9 @@ async function runAgentLoop(
       system: systemPrompt,
       tools: TOOLS,
       messages,
+      // @ts-expect-error — PostHog AI wrapper extends the standard params
+      posthogDistinctId: userId,
+      posthogTraceId: traceId,
     });
 
     // Track tool_use blocks as they appear inline during streaming.

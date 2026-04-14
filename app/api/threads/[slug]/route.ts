@@ -12,6 +12,7 @@ import {
 } from "@/lib/validations";
 import { summarizeThread } from "@/lib/ai/summarize-thread";
 import { buildConversationSnapshot } from "@/lib/thread-snapshot";
+import { getPostHogClient } from "@/lib/posthog-server";
 
 async function findThread(slug: string) {
   const rows = await db
@@ -335,6 +336,19 @@ export async function PUT(
     }
   });
 
+  const posthog = getPostHogClient();
+  posthog.capture({
+    distinctId: session.user.id,
+    event: "thread_reuploaded",
+    properties: {
+      thread_slug: threadRow.slug,
+      agent: sessionData.agent,
+      model: sessionData.model ?? null,
+      message_count: msgs.length,
+      cli_version: sessionData.cli_version ?? null,
+    },
+  });
+
   return NextResponse.json({
     id: threadRow.id,
     slug: threadRow.slug,
@@ -362,6 +376,15 @@ export async function DELETE(
   }
 
   await db.delete(thread).where(eq(thread.id, threadRow.id));
+
+  const posthog = getPostHogClient();
+  posthog.capture({
+    distinctId: session.user.id,
+    event: "thread_deleted",
+    properties: {
+      thread_slug: slug,
+    },
+  });
 
   return new NextResponse(null, { status: 204 });
 }

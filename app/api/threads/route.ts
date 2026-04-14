@@ -12,6 +12,7 @@ import {
 } from "@/lib/validations";
 import { summarizeThread } from "@/lib/ai/summarize-thread";
 import { buildConversationSnapshot } from "@/lib/thread-snapshot";
+import { getPostHogClient } from "@/lib/posthog-server";
 
 /**
  * POST /api/threads — Upload a thread from the CLI
@@ -178,6 +179,19 @@ export async function POST(request: NextRequest) {
     } catch {
       // Silent failure — key points are non-critical
     }
+  });
+
+  const posthog = getPostHogClient();
+  posthog.capture({
+    distinctId: session.user.id,
+    event: "thread_uploaded",
+    properties: {
+      thread_slug: inserted.slug,
+      agent: sessionData.agent,
+      model: sessionData.model ?? null,
+      message_count: messages.length,
+      cli_version: sessionData.cli_version ?? null,
+    },
   });
 
   return NextResponse.json(

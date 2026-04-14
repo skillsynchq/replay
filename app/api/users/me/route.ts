@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/auth-helpers";
 import { auth } from "@/lib/auth";
 import { usernameSchema } from "@/lib/validations";
 import { db } from "@/lib/db";
+import { getPostHogClient } from "@/lib/posthog-server";
 
 /**
  * GET /api/users/me — Get current user profile
@@ -60,9 +61,25 @@ export async function PATCH(request: NextRequest) {
     );
   }
 
+  const previousUsername = (session.user as Record<string, unknown>).username as string | null;
+
   await auth.api.updateUser({
     headers: request.headers,
     body: { username },
+  });
+
+  const posthog = getPostHogClient();
+  posthog.capture({
+    distinctId: session.user.id,
+    event: "username_claimed",
+    properties: {
+      username,
+      is_first_time: !previousUsername,
+    },
+  });
+  posthog.identify({
+    distinctId: session.user.id,
+    properties: { username },
   });
 
   return NextResponse.json({ username });

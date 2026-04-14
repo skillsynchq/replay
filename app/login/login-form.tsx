@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { authClient } from "@/lib/auth-client";
+import posthog from "posthog-js";
 
 function getLastLoginMethod(): string | null {
   const match = document.cookie.match(/(?:^|; )last_login_method=(\w+)/);
@@ -41,6 +42,7 @@ function LoginFormInner() {
   function signInWithGitHub() {
     setLoadingProvider("github");
     setLastLoginMethod("github");
+    posthog.capture("sign_in_clicked", { provider: "github", is_cli_auth: !!redirectUri });
     authClient.signIn.social({
       provider: "github",
       callbackURL,
@@ -50,6 +52,7 @@ function LoginFormInner() {
   function signInWithGoogle() {
     setLoadingProvider("google");
     setLastLoginMethod("google");
+    posthog.capture("sign_in_clicked", { provider: "google", is_cli_auth: !!redirectUri });
     authClient.signIn.social({
       provider: "google",
       callbackURL,

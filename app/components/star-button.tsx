@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { StarIcon } from "./icons";
 import { toggleStar } from "@/lib/thread-mutations";
+import posthog from "posthog-js";
 
 interface StarButtonProps {
   slug: string;
@@ -31,13 +32,16 @@ export function StarButton({
     const prevStarred = starred;
     const prevCount = starCount;
 
-    setStarred(!starred);
+    const willStar = !starred;
+    setStarred(willStar);
     setStarCount(starred ? starCount - 1 : starCount + 1);
 
     const result = await toggleStar(slug);
     if (!result.ok) {
       setStarred(prevStarred);
       setStarCount(prevCount);
+    } else {
+      posthog.capture(willStar ? "thread_starred" : "thread_unstarred", { thread_slug: slug });
     }
   }
 

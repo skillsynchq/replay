@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PageReveal } from "@/app/components/page-reveal";
 import { CheckMark } from "@/app/components/icons";
+import posthog from "posthog-js";
 
 interface UserProfile {
   id: string;
@@ -95,6 +96,9 @@ export function SettingsClient({
       }
 
       const nextUsername = username.toLowerCase();
+      const isFirstTime = !user.username;
+      posthog.capture("username_saved", { username: nextUsername, is_first_time: isFirstTime });
+      posthog.identify(nextUsername, { username: nextUsername });
       setUser((prev) => ({ ...prev, username: nextUsername }));
       setUsername(nextUsername);
       setAvailable(true);
