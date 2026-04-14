@@ -155,9 +155,12 @@ export function NavClient({ user, minimal, tracesEnabled }: NavClientProps) {
                   className="flex cursor-pointer items-center rounded-[4px] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
                 >
                   {user.image ? (
-                    <img
+                    <Image
                       src={user.image}
                       alt={user.name}
+                      width={24}
+                      height={24}
+                      unoptimized
                       className="block size-6 rounded-[4px] border border-border object-cover transition-colors duration-150 hover:border-border-hover"
                     />
                   ) : (

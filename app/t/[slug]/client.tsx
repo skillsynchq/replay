@@ -349,6 +349,8 @@ function renderMessage(
           {imageBlocks.map((b, i) => {
             const src = (b as { type: "image"; source: { media_type: string; data: string } }).source;
             return (
+              // next/image doesn't optimize base64 data URLs; revisit when image blocks move to object storage
+              // eslint-disable-next-line @next/next/no-img-element
               <img
                 key={i}
                 src={`data:${src.media_type};base64,${src.data}`}

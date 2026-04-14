@@ -184,7 +184,7 @@ export function TraceGenerating({
 
   useEffect(() => {
     intervalRef.current = setInterval(poll, 2000);
-    poll();
+    queueMicrotask(poll);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };

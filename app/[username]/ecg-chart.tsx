@@ -56,13 +56,9 @@ interface EcgChartProps {
 export function EcgChart({ data }: EcgChartProps) {
   const [hoveredDay, setHoveredDay] = useState<number | null>(null);
 
-  const { path, globalMax } = useMemo(() => {
+  const path = useMemo(() => {
     const values = data.map((d) => d.count);
-    const max = Math.max(...values, 1);
-    return {
-      path: buildEcgPath(values, max),
-      globalMax: max,
-    };
+    return buildEcgPath(values, Math.max(...values, 1));
   }, [data]);
 
   const dayWidth = VIEW_WIDTH / data.length;

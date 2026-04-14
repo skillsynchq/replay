@@ -163,6 +163,8 @@ export function ContentBlockRenderer({
             return null;
           case "image":
             return (
+              // next/image doesn't optimize base64 data URLs; revisit when image blocks move to object storage
+              // eslint-disable-next-line @next/next/no-img-element
               <img
                 key={i}
                 src={`data:${block.source.media_type};base64,${block.source.data}`}

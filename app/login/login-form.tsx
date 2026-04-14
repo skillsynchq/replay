@@ -1,8 +1,7 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
-import { useEffect } from "react";
 import { authClient } from "@/lib/auth-client";
 import posthog from "posthog-js";
 
@@ -15,18 +14,26 @@ function setLastLoginMethod(method: string) {
   document.cookie = `last_login_method=${method}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
 }
 
+function subscribeNoop() {
+  return () => {};
+}
+
+function getNullSnapshot(): string | null {
+  return null;
+}
+
 function LoginFormInner() {
   const searchParams = useSearchParams();
   const redirectUri = searchParams.get("redirect_uri");
   const state = searchParams.get("state");
-  const [lastMethod, setLastMethod] = useState<string | null>(null);
+  const lastMethod = useSyncExternalStore(
+    subscribeNoop,
+    getLastLoginMethod,
+    getNullSnapshot
+  );
   const [loadingProvider, setLoadingProvider] = useState<
     "github" | "google" | null
   >(null);
-
-  useEffect(() => {
-    setLastMethod(getLastLoginMethod());
-  }, []);
 
   // If CLI params are present, store them in a cookie before OAuth redirect
   useEffect(() => {
