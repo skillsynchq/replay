@@ -2,6 +2,17 @@
   "name": "replay",
   "version": "0.1.0",
   "private": true,
+  "description": "Share AI coding conversations as reviewable threads.",
+  "author": "SkillSync",
+  "license": "Apache-2.0",
+  "homepage": "https://replay.md",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/skillsynchq/replay.git"
+  },
+  "bugs": {
+    "url": "https://github.com/skillsynchq/replay/issues"
+  },
   "scripts": {
     "dev": "bun run --bun next dev",
     "build": "bun run --bun next build",
