@@ -115,16 +115,7 @@ export default function Home() {
                 </p>
                 <p className="text-[13px] text-fg-muted">
                   <span className="text-fg">Open source.</span>{" "}
-                  Inspect, fork, or self-host. Source on{" "}
-                  <a
-                    href="https://github.com/skillsynchq/replay"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-fg-muted underline decoration-border underline-offset-2 transition-colors duration-150 hover:text-fg hover:decoration-border-hover"
-                  >
-                    GitHub
-                  </a>
-                  .
+                  Inspect, fork, or self-host.
                 </p>
               </div>
             </PageReveal>
