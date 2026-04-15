@@ -1,8 +1,8 @@
 # Replay
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](./LICENSE)
-[![Website](https://img.shields.io/badge/web-replay.md-stone)](https://replay.md)
-[![Docs](https://img.shields.io/badge/docs-replay.md%2Fdocs-stone)](https://replay.md/docs)
+[![Website](https://img.shields.io/badge/web-replay.md-78716c)](https://replay.md)
+[![Docs](https://img.shields.io/badge/docs-replay.md%2Fdocs-78716c)](https://replay.md/docs)
 
 Share your AI coding sessions. Upload a conversation from Claude Code or Codex, get a permanent link. That's it.
 

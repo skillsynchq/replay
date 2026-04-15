@@ -1,12 +1,10 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { Anthropic as PhAnthropic } from "@posthog/ai";
 import { requireAuth } from "@/lib/auth-helpers";
 import { THREAD_TOOLS, executeServerTool } from "@/lib/ai/tools";
 import { getPostHogClient } from "@/lib/posthog-server";
 
-const client = new PhAnthropic({
+const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
-  posthog: getPostHogClient(),
 });
 
 const TOOLS = THREAD_TOOLS;
@@ -169,8 +167,6 @@ async function runAgentLoop(
       system: systemPrompt,
       tools: TOOLS,
       messages,
-      posthogDistinctId: userId,
-      posthogTraceId: traceId,
     });
 
     // Track tool_use blocks as they appear inline during streaming.
