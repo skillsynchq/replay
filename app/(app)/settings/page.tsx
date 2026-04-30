@@ -16,6 +16,8 @@ export default async function SettingsPage({
   const params = await searchParams;
   const welcome = params.welcome === "1";
 
+  const accounts = await auth.api.listUserAccounts({ headers: headersList });
+
   return (
     <SettingsClient
       initialUser={{
@@ -27,6 +29,10 @@ export default async function SettingsPage({
           ((session.user as Record<string, unknown>).username as string | null) ??
           null,
       }}
+      initialAccounts={accounts.map((a) => ({
+        providerId: a.providerId,
+        accountId: a.accountId,
+      }))}
       welcome={welcome}
     />
   );

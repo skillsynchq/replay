@@ -22,6 +22,13 @@ export const auth = betterAuth({
     },
   },
   plugins: [bearer()],
+  account: {
+    accountLinking: {
+      enabled: true,
+      trustedProviders: ["google", "github"],
+      allowDifferentEmails: true,
+    },
+  },
   user: {
     additionalFields: {
       username: {
